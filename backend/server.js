@@ -1,7 +1,12 @@
 import express from 'express';
 import malogg from 'malogg';
-const app = express();
+import dotenv from 'dotenv';
+import connectDb from './config/db.js';
 
+dotenv.config()
+
+const app = express();
+const PORT = process.env.PORT || 8080
 
 app.use(malogg)
 app.get('/health',(req,res)=>{
@@ -10,6 +15,8 @@ app.get('/health',(req,res)=>{
     })
 })
 
-app.listen(8080,()=>{
-    console.log("Server running")
+connectDb()
+
+app.listen(PORT,()=>{
+    console.log("Server running on port", PORT)
 })
