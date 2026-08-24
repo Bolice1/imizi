@@ -2,6 +2,7 @@ import { UserModel } from "../models/user.model.js";
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt'
 import dotenv from 'dotenv';
+import emailUtils from '../utils/email.js'
 
 dotenv.config();
 
@@ -21,9 +22,13 @@ const register = async (req, res, next) => {
             email,
             password: hashedPassword
         })
-        return res.status(201).json({
-            success: true,
-            message: "User registered"
+        
+        emailUtils.sendWelcomeEmail(fullName,email).then(()=>{
+            return res.status(201).json({
+                success: true,
+                message: "User registered"
+            })
+
         })
     } catch (error) {
         console.log(error.message)
