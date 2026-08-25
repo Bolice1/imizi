@@ -1,9 +1,12 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "Imizi backend",
+  "description": "from your archive to family legacy",
   "keywords": [
-    "Imizi"
+    "family",
+    "legacy",
+    "history",
+    "ai"
   ],
   "homepage": "https://github.com/Bolice1/imizi#readme",
   "bugs": {
@@ -14,19 +17,22 @@
     "url": "git+https://github.com/Bolice1/imizi.git"
   },
   "license": "MIT",
-  "author": "Marius",
+  "author": "KOMEZUSENGE Bolice,SANGWA Marius",
   "type": "module",
-  "main": "server.js",
+  "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon server"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "dotenv": "^17.4.2",
-    "express": "^5.2.1",
-    "json-web-token": "^4.0.1",
-    "malogg": "^1.0.2",
-    "mongoose": "^9.9.3",
-    "nodemon": "^3.1.14"
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.3.0",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
   }
 }
