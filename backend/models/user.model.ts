@@ -1,43 +1,43 @@
-import mongoose from 'mongoose';
+import mongoose from 'mongoose'
 
 export const userSchema = new mongoose.Schema({
-   fullName:{
+    fullName: {
         type: String,
         required: true,
         unique: false
-   },
-    email:{
+    },
+    email: {
         type: String,
         required: true,
         unique: true
     },
-    password:{
+    password: {
         type: String,
         required: true,
         unique: false
     },
-    familyId:{
+    familyId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Family',
         required: false,
         unique: false
     },
-    role:{
+    role: {
         type: String,
         unique: false,
         enum: ['admin_family', 'user'],
         default: 'user'
     },
-    phoneNumber:{
+    phoneNumber: {
         type: String,
         required: false,
-        unique: true,
+        unique: true
     },
 
-    resetToken:String,
-    resetTokenExpires:Date
-    
-},{timestamps:true})
+    resetToken: String,
+    resetTokenExpires: Number
+
+}, { timestamps: true })
 
 
-export const  UserModel = mongoose.model('User', userSchema);
+export const UserModel = mongoose.model('User', userSchema)

@@ -1,5 +1,5 @@
-const welcomeEmailTemplate = (fullName, loginUrl) => {
-  return `
+const welcomeEmailTemplate = (fullName: string, loginUrl: string): string => {
+    return `
   <!DOCTYPE html>
   <html lang="en">
   <head>
@@ -116,8 +116,8 @@ const welcomeEmailTemplate = (fullName, loginUrl) => {
 
 
 
-const resetPasswordEmailTemplate = (fullName, resetUrl) => {
-  return `
+const resetPasswordEmailTemplate = (fullName: string, resetUrl: string): string => {
+    return `
   <!DOCTYPE html>
   <html lang="en">
   <head>

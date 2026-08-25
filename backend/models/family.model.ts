@@ -1,20 +1,20 @@
-import mongoose from 'mongoose';
+import mongoose from 'mongoose'
 
 
 export const familySchema = new mongoose.Schema({
-    familyName:{
+    familyName: {
         type: String,
         required: true,
         unique: false
     },
-    familyMembers:{
+    familyMembers: {
         type: [mongoose.Schema.Types.ObjectId],
         ref: 'User',
         required: false,
         unique: false
     },
-    
+
 
 })
 
-export const FamilyModel = mongoose.model('Family', familySchema);
+export const FamilyModel = mongoose.model('Family', familySchema)
