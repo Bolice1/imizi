@@ -1,12 +1,9 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "from your archive to family legacy",
+  "description": "Imizi backend",
   "keywords": [
-    "family",
-    "legacy",
-    "history",
-    "ai"
+    "Imizi"
   ],
   "homepage": "https://github.com/Bolice1/imizi#readme",
   "bugs": {
@@ -17,25 +14,15 @@
     "url": "git+https://github.com/Bolice1/imizi.git"
   },
   "license": "MIT",
-  "author": "KOMEZUSENGE Bolice,SANGWA Marius",
+  "author": "Marius",
   "type": "module",
-  "main": "index.js",
+  "main": "server.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon --exec tsx server.ts",
+    "build": "tsc"
   },
   "dependencies": {
-<<<<<<< HEAD
-    "express": "^5.2.1"
-  },
-  "devDependencies": {
-    "@types/express": "^5.0.6",
-    "@types/node": "^26.3.0",
-    "tsx": "^4.23.12",
-    "typescript": "^7.0.2"
-  },
-  "allowScripts": {
-    "esbuild@0.28.2": true
-=======
     "bcrypt": "^6.0.0",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
@@ -45,6 +32,16 @@
     "mongoose": "^9.9.3",
     "nodemailer": "^9.0.5",
     "nodemon": "^3.1.14"
->>>>>>> 5299d697c5940ab2ef4f6dbf339a5ca347abbab4
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/mongoose": "^5.11.96",
+    "@types/node": "^26.3.0",
+    "@types/nodemailer": "^8.0.1",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2"
   }
 }

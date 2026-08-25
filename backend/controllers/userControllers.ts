@@ -1,0 +1,203 @@
+import { Request, Response, NextFunction } from 'express'
+import { UserModel } from '../models/user.model.js'
+import jwt from 'jsonwebtoken'
+import bcrypt from 'bcrypt'
+import dotenv from 'dotenv'
+import emailUtils from '../utils/email.js'
+import crypto from 'crypto'
+
+dotenv.config()
+
+const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const { fullName, email, password } = req.body
+    if (!fullName || !email || !password) {
+        res.status(400).json({
+            success: false,
+            message: 'fullName, email and password are all required'
+        })
+        return
+    }
+
+    try {
+        const hashedPassword = await bcrypt.hash(password, 10)
+        const newUser = await UserModel.insertOne({
+            fullName,
+            email,
+            password: hashedPassword
+        })
+        const host = req.get('host')
+        const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http'
+        const loginUrl = `${protocol}://${host}/login`
+
+        emailUtils.sendWelcomeEmail(fullName, loginUrl, email).then(() => {
+            res.status(201).json({
+                success: true,
+                message: 'User registered'
+            })
+        })
+    } catch (error) {
+        console.log((error as Error).message)
+        next(error)
+    }
+}
+
+const logIn = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const { email, password } = req.body
+    if (!email || !password) {
+        res.status(400).json({
+            success: false,
+            message: 'email and password are all required'
+        })
+        return
+    }
+
+    try {
+        const user = await UserModel.findOne({ email }).select('+password')
+        const userToReturn = await UserModel.findOne({ email })
+        if (!user) {
+            res.status(400).json({
+                success: false,
+                message: 'User not found'
+            })
+            return
+        }
+
+        if (!await bcrypt.compare(password, user.password)) {
+            res.status(400).json({
+                success: false,
+                message: 'Incorrect password'
+            })
+            return
+        }
+
+        const token = jwt.sign(
+            { user },
+            process.env.JWT_SECRET as string,
+            { expiresIn: '7d' }
+        )
+
+        res.status(200).json({
+            success: true,
+            message: 'Login successful',
+            token,
+            user: userToReturn
+        })
+    } catch (error) {
+        res.status(500).json({
+            message: 'Internal server error'
+        })
+        console.log((error as Error).message)
+    }
+}
+
+const forgotPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const email = req.body.email
+    if (!email) {
+        res.status(400).json({
+            success: false,
+            message: 'Email is required'
+        })
+        return
+    }
+
+    try {
+        const user = await UserModel.findOne({ email })
+        if (!user) {
+            res.status(400).json({
+                success: false,
+                message: 'no user with that email'
+            })
+            return
+        }
+
+        const resetToken = crypto.randomBytes(32).toString('hex')
+        user.resetToken = resetToken
+        user.resetTokenExpires = Date.now() + (30 * 60 * 1000)
+        await user.save()
+
+        const host = req.get('host')
+        const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http'
+        const resetUrl = `${protocol}://${host}/reset-password/${resetToken}?email=${email}`
+        emailUtils.sendResetPasswordEmail(user.fullName, email, resetUrl).then(() => {
+            res.status(200).json({
+                success: true,
+                message: 'Reset Link has been sent to your email'
+            })
+        })
+
+    } catch (error) {
+        console.log((error as Error).message)
+    }
+}
+
+
+const restPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const resetToken = req.params.resetToken
+    const email = req.query.email as string
+    const newPassword = req.body.password
+    if (!resetToken || !email) {
+        res.status(400).json({
+            success: false,
+            message: 'no reset token in the reset link'
+        })
+        return
+    }
+
+    const user = await UserModel.findOne({ email })
+    if (!user) {
+        res.status(400).json({
+            success: false,
+            message: 'Invalid reset link'
+        })
+        return
+    }
+
+    if(!user.resetToken){
+        res.status(400).json({
+            success:false,
+            message:"Reset link expired"
+        })
+        return
+    }
+    const newHashedPassword = await bcrypt.hash(newPassword, 10)
+
+    try {
+        if (!(resetToken === user.resetToken)) {
+            res.status(400).json({
+                success: false,
+                message: "Tokens don't match"
+            })
+            return
+        }
+
+        if (!user.resetTokenExpires || user.resetTokenExpires < Date.now()) {
+            res.status(400).json({
+                success: false,
+                message: 'The resent link has expired'
+            })
+            return
+        }
+
+        user.password = newHashedPassword
+        user.resetToken = undefined
+        user.resetTokenExpires = undefined
+        await user.save()
+
+        res.status(200).json({
+            success: true,
+            message: 'Your password has been reset successfully'
+        })
+
+    } catch (error) {
+        console.log((error as Error).message)
+    }
+
+}
+
+
+export default {
+    register,
+    logIn,
+    forgotPassword,
+    restPassword
+}
