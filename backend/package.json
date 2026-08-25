@@ -24,6 +24,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
+<<<<<<< HEAD
     "express": "^5.2.1"
   },
   "devDependencies": {
@@ -34,5 +35,16 @@
   },
   "allowScripts": {
     "esbuild@0.28.2": true
+=======
+    "bcrypt": "^6.0.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "json-web-token": "^4.0.1",
+    "jsonwebtoken": "^9.0.3",
+    "malogg": "^1.0.2",
+    "mongoose": "^9.9.3",
+    "nodemailer": "^9.0.5",
+    "nodemon": "^3.1.14"
+>>>>>>> 5299d697c5940ab2ef4f6dbf339a5ca347abbab4
   }
 }
