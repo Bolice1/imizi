@@ -42,7 +42,24 @@ const sendResetPasswordEmail = async (fullName: string, email: string, resetUrl:
     }
 }
 
+const sendFamilyInvitationEmail = async (inviterName: string, familyName: string, inviteUrl: string, email: string): Promise<void> => {
+    const options = {
+        from: `Imizi<${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: `You are invited to join ${familyName} on Imizi`,
+        html: emailTemplates.familyInvitationEmailTemplate(inviterName, familyName, inviteUrl)
+    }
+
+    try {
+        const info = await transporter.sendMail(options)
+        console.log(`Family invitation email sent ${info.response}`)
+    } catch (error) {
+        console.log(`Error sending family invitation email ${(error as Error).message}`)
+    }
+}
+
 export default {
     sendWelcomeEmail,
-    sendResetPasswordEmail
+    sendResetPasswordEmail,
+    sendFamilyInvitationEmail
 }

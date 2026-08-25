@@ -13,6 +13,11 @@ export const familySchema = new mongoose.Schema({
         required: false,
         unique: false
     },
+    createdBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
 
 
 })

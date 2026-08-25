@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express'
+import cors from 'cors'
 import malogg from 'malogg'
 import dotenv from 'dotenv'
 import routes from './routes/index.js'
@@ -9,6 +10,7 @@ dotenv.config()
 const app = express()
 const PORT = process.env.PORT || 8080
 
+app.use(cors())
 app.use(express.json())
 app.use(malogg)
 app.use('/api/v1', routes)
@@ -16,6 +18,16 @@ app.get('/health', (req: Request, res: Response) => {
     res.status(200).json({
         message: 'Server health checked'
     })
+})
+
+app.get('/reset-password/:token', (req: Request, res: Response) => {
+    const { token } = req.params
+    const email = typeof req.query.email === 'string' ? req.query.email : undefined
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
+    const params = new URLSearchParams()
+    if (token) params.set('token', token as string)
+    if (email) params.set('email', email)
+    res.redirect(`${frontendUrl}/reset-password?${params.toString()}`)
 })
 
 connectDb()
