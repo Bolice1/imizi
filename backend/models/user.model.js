@@ -32,8 +32,12 @@ export const userSchema = new mongoose.Schema({
         type: String,
         required: false,
         unique: true,
-    }
-})
+    },
+
+    resetToken:String,
+    resetTokenExpires:Date
+    
+},{timestamps:true})
 
 
 export const  UserModel = mongoose.model('User', userSchema);

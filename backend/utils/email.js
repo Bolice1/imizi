@@ -11,22 +11,38 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-const sendWelcomeEmail = async (fullName, email) => {
+const sendWelcomeEmail = async (fullName,loginUrl,email) => {
     try {
         const options = {
             from: `Imizi<${process.env.EMAIL_USER}>`,
             to: email,
             subject: "Welcome to Imizi",
-            html:emailTemplates.welcomeEmailTemplate(fullName,email)
+            html:emailTemplates.welcomeEmailTemplate(fullName,loginUrl)
         }
         const info = await transporter.sendMail(options);
         console.log(`Welcome email sent: ${info.response}`)
     } catch (error) {
-        console.log(`Error sending Welcome email: ${error.message}`)
+        console.log(`Error sending Welcome email: ${error}`)
     }
 }
 
+const sendResetPasswordEmail = async(fullName, email, resetUrl)=>{
+    const options = {
+        from: `Imizi<${process.env.EMAIL_USER}>`,
+        to:email,
+        subject:"Request for a password reset",
+        html:emailTemplates.resetPasswordEmailTemplate(fullName,resetUrl)
+    }
+
+    try {
+        const info = await transporter.sendMail(options);
+        console.log(`Password reset email sent ${info.response}`)
+    } catch (error) {
+        console.log(`Error sending password reset email ${error.message}`)
+    }
+}
 
 export default {
-    sendWelcomeEmail
+    sendWelcomeEmail,
+    sendResetPasswordEmail
 }
