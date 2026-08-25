@@ -27,7 +27,8 @@ const register = async (req: Request, res: Response, next: NextFunction): Promis
         })
         const host = req.get('host')
         const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http'
-        const loginUrl = `${protocol}://${host}/login`
+        const frontendUrl = process.env.FRONTEND_URL || `${protocol}://${host}`
+        const loginUrl = `${frontendUrl}/login`
 
         emailUtils.sendWelcomeEmail(fullName, loginUrl, email).then(() => {
             res.status(201).json({
@@ -105,7 +106,7 @@ const forgotPassword = async (req: Request, res: Response, next: NextFunction): 
         if (!user) {
             res.status(400).json({
                 success: false,
-                message: 'no user with that email'
+                message: 'User not found'
             })
             return
         }
@@ -117,7 +118,8 @@ const forgotPassword = async (req: Request, res: Response, next: NextFunction): 
 
         const host = req.get('host')
         const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http'
-        const resetUrl = `${protocol}://${host}/reset-password/${resetToken}?email=${email}`
+        const frontendUrl = process.env.FRONTEND_URL || `${protocol}://${host}`
+        const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`
         emailUtils.sendResetPasswordEmail(user.fullName, email, resetUrl).then(() => {
             res.status(200).json({
                 success: true,
@@ -138,7 +140,7 @@ const restPassword = async (req: Request, res: Response, next: NextFunction): Pr
     if (!resetToken || !email) {
         res.status(400).json({
             success: false,
-            message: 'no reset token in the reset link'
+            message: 'No reset token in the reset link'
         })
         return
     }

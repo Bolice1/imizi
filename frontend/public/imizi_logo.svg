@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="325" height="384" viewBox="0 0 325 384">
+  <rect width="325" height="384" fill="#1e1e1e"/>
+
+  <!-- Imizi emblem -->
+  <g fill="none" stroke="#8a6a46" stroke-linecap="round" stroke-linejoin="round">
+    <!-- central trunk -->
+    <path d="M162.5 188 L162.5 218" stroke-width="5"/>
+    <!-- roots -->
+    <path d="M162.5 218 L145.5 233 M162.5 218 L162.5 238 M162.5 218 L177.5 233" stroke-width="4"/>
+    <!-- connecting branches -->
+    <path d="M132.5 132.5 L127.5 128 M192.5 132.5 L197.5 128 M128 160 L119 161 M197 160 L206 161" stroke-width="4"/>
+  </g>
+
+  <!-- surrounding family nodes -->
+  <circle cx="115.5" cy="117" r="13.5" fill="#74583d"/>
+  <circle cx="206" cy="117" r="13.5" fill="#b29673"/>
+  <circle cx="100.5" cy="166" r="13.5" fill="#b29673"/>
+  <circle cx="221.5" cy="166" r="13.5" fill="#74583d"/>
+
+  <!-- central node -->
+  <circle cx="162" cy="156" r="27" fill="#806344"/>
+
+  <!-- wordmark -->
+  <text x="162.5" y="296"
+        text-anchor="middle"
+        fill="#8a6a46"
+        font-family="Montserrat, Arial, sans-serif"
+        font-size="48"
+        font-weight="400"
+        letter-spacing="12">IMIZI</text>
+</svg>
