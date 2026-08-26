@@ -28,8 +28,8 @@ export default function LoginPage() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
       window.location.href = "/dashboard";
-    } catch (err: any) {
-      setError(err?.message || "Something went wrong. Please try again.");
+    } catch {
+      setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }

@@ -199,3 +199,4 @@ export default function AddEventModal({ isOpen, event, onClose, onSuccess }: Add
     </div>
   );
 }
+  </div>

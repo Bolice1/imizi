@@ -42,13 +42,14 @@ export default function RegisterPage() {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
+      
       if (invitationCode) {
         window.location.href = "/dashboard?joinFamily=true&code=" + encodeURIComponent(invitationCode);
       } else {
         window.location.href = "/dashboard?setupFamily=true";
       }
-    } catch (err: any) {
-      setError(err?.message || "Something went wrong. Please try again.");
+    } catch {
+      setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
