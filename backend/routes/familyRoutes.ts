@@ -8,6 +8,8 @@ router.post('/create', isLoggedIn, familyControllers.createFamily)
 router.post('/invite', isLoggedIn, familyControllers.inviteMember)
 router.post('/join', isLoggedIn, familyControllers.joinFamily)
 router.get('/my-family', isLoggedIn, familyControllers.getMyFamily)
-router.get('/invite/:token', familyControllers.getInvite)
+router.get('/tree', isLoggedIn, familyControllers.getFamilyTree)
+router.get('/invite/:code', familyControllers.getInvite)
+router.post('/invite-link', isLoggedIn, familyControllers.generateInviteLink)
 
 export default router
