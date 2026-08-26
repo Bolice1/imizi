@@ -9,7 +9,7 @@ import crypto from 'crypto'
 dotenv.config()
 
 const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const { fullName, email, password } = req.body
+    const { fullName, email, password, invitationCode } = req.body
     if (!fullName || !email || !password) {
         res.status(400).json({
             success: false,
@@ -23,7 +23,8 @@ const register = async (req: Request, res: Response, next: NextFunction): Promis
         const newUser = await UserModel.insertOne({
             fullName,
             email,
-            password: hashedPassword
+            password: hashedPassword,
+            invitationCode: invitationCode || undefined
         })
         const host = req.get('host')
         const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http'
@@ -54,7 +55,7 @@ const logIn = async (req: Request, res: Response, next: NextFunction): Promise<v
 
     try {
         const user = await UserModel.findOne({ email }).select('+password')
-        const userToReturn = await UserModel.findOne({ email })
+        const userToReturn = await UserModel.findOne({ email }).select('-password')
         if (!user) {
             res.status(400).json({
                 success: false,
@@ -72,7 +73,7 @@ const logIn = async (req: Request, res: Response, next: NextFunction): Promise<v
         }
 
         const token = jwt.sign(
-            { user },
+            { user: { _id: user._id } },
             process.env.JWT_SECRET as string,
             { expiresIn: '7d' }
         )
