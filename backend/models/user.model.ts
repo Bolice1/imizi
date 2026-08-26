@@ -31,7 +31,14 @@ export const userSchema = new mongoose.Schema({
     phoneNumber: {
         type: String,
         required: false,
-        unique: true
+        unique: true,
+        sparse: true
+    },
+
+    invitationCode: {
+        type: String,
+        required: false,
+        unique: false
     },
 
     resetToken: String,
