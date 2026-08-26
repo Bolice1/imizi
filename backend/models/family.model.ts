@@ -18,8 +18,10 @@ export const familySchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
-
-
+    treeData: {
+        type: mongoose.Schema.Types.Mixed,
+        required: false
+    }
 })
 
 export const FamilyModel = mongoose.model('Family', familySchema)

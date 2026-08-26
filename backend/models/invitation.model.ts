@@ -3,7 +3,7 @@ import mongoose from 'mongoose'
 export const invitationSchema = new mongoose.Schema({
     email: {
         type: String,
-        required: true,
+        required: false,
         lowercase: true,
         trim: true
     },
@@ -12,10 +12,11 @@ export const invitationSchema = new mongoose.Schema({
         ref: 'Family',
         required: true
     },
-    token: {
+    code: {
         type: String,
         required: true,
-        unique: true
+        unique: true,
+        uppercase: true
     },
     status: {
         type: String,
