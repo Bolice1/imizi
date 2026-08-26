@@ -19,7 +19,7 @@ const isLoggedIn = async (req: any, res: any, next: any): Promise<void> => {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as { user: { _id: string } }
-        const user = await UserModel.findById(decoded.user._id)
+        const user = await UserModel.findById(decoded.user._id).select('-password')
         if (!user) {
             res.status(401).json({ success: false, message: 'Unauthorized' })
             return
