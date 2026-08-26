@@ -4,6 +4,7 @@ import malogg from 'malogg'
 import dotenv from 'dotenv'
 import routes from './routes/index.js'
 import connectDb from './config/db.js'
+import { setupSwagger } from './utils/swagger.js'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
@@ -13,13 +14,14 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const app = express()
-const PORT = process.env.PORT || 8080
+const PORT = process.env.PORT || 5000
 
 app.use(cors())
 app.use(express.json())
 app.use(malogg)
 app.use('/api/v1', routes)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
+setupSwagger(app)
 app.get('/health', (req: Request, res: Response) => {
     res.status(200).json({
         message: 'Server health checked'

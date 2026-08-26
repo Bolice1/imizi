@@ -129,7 +129,7 @@ const joinFamily = async (req: AuthRequest, res: Response, next: NextFunction): 
 
         const user = await UserModel.findById(userId)
         if (!user) {
-            res.status(404).json({ success: false, message: 'User not found' })
+            res.status(404).json({ success: false, message: 'invalid credentials' })
             return
         }
 
@@ -165,13 +165,13 @@ const getMyFamily = async (req: AuthRequest, res: Response, next: NextFunction):
     try {
         const user = await UserModel.findById(userId)
         if (!user?.familyId) {
-            res.status(404).json({ success: false, message: 'No family found' })
+            res.status(200).json({ success: true, family: null })
             return
         }
 
         const family = await FamilyModel.findById(user.familyId).populate('familyMembers', 'fullName email')
         if (!family) {
-            res.status(404).json({ success: false, message: 'Family not found' })
+            res.status(200).json({ success: true, family: null })
             return
         }
 

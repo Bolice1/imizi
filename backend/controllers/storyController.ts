@@ -55,7 +55,22 @@ const getStories = async (req: AuthRequest, res: Response, next: NextFunction): 
     }
 }
 
+const getStoryById = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const story = await StoryModel.findById(req.params.id).populate('author', 'fullName email')
+        if (!story) {
+            res.status(404).json({ success: false, message: 'Story not found' })
+            return
+        }
+        res.status(200).json({ success: true, story })
+    } catch (error) {
+        console.log((error as Error).message)
+        res.status(500).json({ success: false, message: 'Failed to fetch story' })
+    }
+}
+
 export default {
     createStory,
-    getStories
+    getStories,
+    getStoryById
 }
