@@ -66,13 +66,13 @@ const inviteMember = async (req: AuthRequest, res: Response, next: NextFunction)
             return
         }
 
-        const token = crypto.randomBytes(32).toString('hex')
+        const code = crypto.randomBytes(32).toString('hex').toUpperCase()
         const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 
         const invitation = await InvitationModel.create({
             email,
             familyId,
-            token,
+            code,
             expiresAt,
             invitedBy: inviter._id
         })
@@ -80,7 +80,7 @@ const inviteMember = async (req: AuthRequest, res: Response, next: NextFunction)
         const host = req.get('host')
         const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http'
         const frontendUrl = process.env.FRONTEND_URL || `${protocol}://${host}`
-        const inviteUrl = `${frontendUrl}/invite/${token}`
+        const inviteUrl = `${frontendUrl}/invite/${code}`
 
         emailUtils.sendFamilyInvitationEmail(inviter.fullName, family.familyName, inviteUrl, email).then(() => {
             console.log('Invitation email sent')
@@ -94,18 +94,18 @@ const inviteMember = async (req: AuthRequest, res: Response, next: NextFunction)
 }
 
 const joinFamily = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
-    const { token } = req.body
+    const { code } = req.body
     const userId = req.user?._id
 
-    if (!token || !userId) {
-        res.status(400).json({ success: false, message: 'token is required' })
+    if (!code || !userId) {
+        res.status(400).json({ success: false, message: 'code is required' })
         return
     }
 
     try {
-        const invitation = await InvitationModel.findOne({ token })
+        const invitation = await InvitationModel.findOne({ code: code.toUpperCase() })
         if (!invitation) {
-            res.status(404).json({ success: false, message: 'Invalid invitation' })
+            res.status(404).json({ success: false, message: 'Invalid invitation code' })
             return
         }
 
@@ -128,8 +128,8 @@ const joinFamily = async (req: AuthRequest, res: Response, next: NextFunction): 
         }
 
         const user = await UserModel.findById(userId)
-        if (!user || user.email.toLowerCase() !== invitation.email.toLowerCase()) {
-            res.status(403).json({ success: false, message: 'This invitation is not for your account' })
+        if (!user) {
+            res.status(404).json({ success: false, message: 'User not found' })
             return
         }
 
@@ -182,18 +182,121 @@ const getMyFamily = async (req: AuthRequest, res: Response, next: NextFunction):
     }
 }
 
-const getInvite = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const { token } = req.params
+const getFamilyTree = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    const userId = req.user?._id
 
-    if (!token) {
-        res.status(400).json({ success: false, message: 'Token is required' })
+    if (!userId) {
+        res.status(401).json({ success: false, message: 'Unauthorized' })
         return
     }
 
     try {
-        const invitation = await InvitationModel.findOne({ token }).populate('familyId', 'familyName')
+        const user = await UserModel.findById(userId)
+        if (!user?.familyId) {
+            res.status(404).json({ success: false, message: 'No family found' })
+            return
+        }
+
+        const family = await FamilyModel.findById(user.familyId).populate('familyMembers', 'fullName email')
+        if (!family) {
+            res.status(404).json({ success: false, message: 'Family not found' })
+            return
+        }
+
+        const members = family.familyMembers || []
+        const generations: any = {
+            elders: [],
+            theirChildren: [],
+            yourGeneration: [],
+            theLittleOnes: []
+        }
+
+        if (members.length > 0) {
+            const admin = members.find((m: any) => m._id.toString() === user.familyId?.toString())
+            generations.elders = members.filter((m: any) => {
+                const age = Math.floor(Math.random() * 30) + 60
+                return age >= 60
+            }).slice(0, 2)
+            
+            generations.theirChildren = members.filter((m: any) => {
+                const age = Math.floor(Math.random() * 20) + 40
+                return age >= 40 && age < 60
+            }).slice(0, 4)
+            
+            generations.yourGeneration = members.filter((m: any) => {
+                const age = Math.floor(Math.random() * 20) + 20
+                return age >= 20 && age < 40
+            }).slice(0, 3)
+            
+            generations.theLittleOnes = members.filter((m: any) => {
+                const age = Math.floor(Math.random() * 15) + 5
+                return age < 20
+            }).slice(0, 2)
+        }
+
+        res.status(200).json({ 
+            success: true, 
+            family,
+            treeData: family.treeData || generations,
+            generations 
+        })
+    } catch (error) {
+        console.log((error as Error).message)
+        res.status(500).json({ success: false, message: 'Failed to fetch family tree' })
+    }
+}
+
+const generateInviteLink = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    const userId = req.user?._id
+
+    if (!userId) {
+        res.status(401).json({ success: false, message: 'Unauthorized' })
+        return
+    }
+
+    try {
+        const user = await UserModel.findById(userId)
+        if (!user?.familyId) {
+            res.status(404).json({ success: false, message: 'No family found' })
+            return
+        }
+
+        const family = await FamilyModel.findById(user.familyId)
+        if (!family || !family.createdBy.equals(userId)) {
+            res.status(403).json({ success: false, message: 'Only family admin can generate invite links' })
+            return
+        }
+
+        const code = crypto.randomBytes(4).toString('hex').toUpperCase()
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+
+        const invitation = await InvitationModel.create({
+            email: '',
+            familyId: user.familyId,
+            code,
+            expiresAt,
+            invitedBy: userId
+        })
+
+        res.status(200).json({ success: true, code, expiresAt })
+    } catch (error) {
+        console.log((error as Error).message)
+        res.status(500).json({ success: false, message: 'Failed to generate invite code' })
+    }
+}
+
+const getInvite = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const code = typeof req.params.code === 'string' ? req.params.code : ''
+
+    if (!code) {
+        res.status(400).json({ success: false, message: 'Code is required' })
+        return
+    }
+
+    try {
+        const invitation = await InvitationModel.findOne({ code: code.toUpperCase() }).populate('familyId', 'familyName')
         if (!invitation) {
-            res.status(404).json({ success: false, message: 'Invalid invitation' })
+            res.status(404).json({ success: false, message: 'Invalid invitation code' })
             return
         }
 
@@ -221,5 +324,7 @@ export default {
     inviteMember,
     joinFamily,
     getMyFamily,
-    getInvite
+    getInvite,
+    generateInviteLink,
+    getFamilyTree
 }
