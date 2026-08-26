@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { api } from "@/lib/api";
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, CheckCircle2 } from "lucide-react";
 
 export default function LoginPage() {
@@ -18,23 +19,17 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:5000/api/v1/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.message || "Login failed");
+      const data = await api.post("/auth/login", { email, password });
+      if (!data?.token) {
+        setError(data?.message || "Login failed");
         return;
       }
 
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
       window.location.href = "/dashboard";
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (err: any) {
+      setError(err?.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }

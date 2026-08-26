@@ -6,6 +6,5 @@ const router = express.Router()
 
 router.post('/', isLoggedIn, storyController.createStory)
 router.get('/', isLoggedIn, storyController.getStories)
-router.get('/:id', isLoggedIn, storyController.getStoryById)
 
 export default router

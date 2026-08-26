@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Plus, Heart, MessageCircle, Play } from "lucide-react";
 import { api } from "@/lib/api";
 import InnerLayout from "@/components/layout/InnerLayout";
+import AddStoryModal from "@/components/modals/AddStoryModal";
 
 interface Story {
   _id: string;
@@ -29,6 +30,7 @@ interface AuthorGroup {
 export default function StoriesPage() {
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddStory, setShowAddStory] = useState(false);
 
   useEffect(() => {
     fetchStories();
@@ -86,7 +88,10 @@ export default function StoriesPage() {
 
   const actions = (
     <div className="flex items-center gap-4">
-      <button className="flex items-center gap-2 px-4 py-2.5 bg-[#4A3428] text-white rounded-xl text-sm font-medium hover:bg-[#3A2E22] transition-colors">
+      <button
+        onClick={() => setShowAddStory(true)}
+        className="flex items-center gap-2 px-4 py-2.5 bg-[#4A3428] text-white rounded-xl text-sm font-medium hover:bg-[#3A2E22] transition-colors"
+      >
         <Plus className="w-4 h-4" />
         Add Your Story
       </button>
@@ -107,6 +112,7 @@ export default function StoriesPage() {
   }
 
   return (
+    <>
     <InnerLayout
       title="Family Stories"
       subtitle="Every family weaves its own quiet tapestry of time, stitched together by those unforgettable moments where their lives change forever and their shared history begins."
@@ -157,10 +163,13 @@ export default function StoriesPage() {
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    <button className="px-4 py-2 bg-[#4A3428] text-white rounded-lg text-xs font-medium hover:bg-[#3A2E22] transition-colors">
-                      View
-                    </button>
+                   <div className="flex items-center gap-3 flex-shrink-0">
+                     <Link
+                       href={`/stories/${story._id}`}
+                       className="px-4 py-2 bg-[#4A3428] text-white rounded-lg text-xs font-medium hover:bg-[#3A2E22] transition-colors"
+                     >
+                       View
+                     </Link>
                     <span className="text-[10px] text-[#A6987F]">
                       {new Date(story.createdAt).toLocaleDateString("en-US", {
                         month: "short",
@@ -185,5 +194,12 @@ export default function StoriesPage() {
         )}
       </div>
     </InnerLayout>
+
+    <AddStoryModal
+      isOpen={showAddStory}
+      onClose={() => setShowAddStory(false)}
+      onSuccess={fetchStories}
+    />
+    </>
   );
 }

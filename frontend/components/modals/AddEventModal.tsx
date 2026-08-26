@@ -1,21 +1,59 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, CalendarDays } from "lucide-react";
+import { api } from "@/lib/api";
+
+interface FamilyEvent {
+  _id: string;
+  title: string;
+  description?: string;
+  type: "birthday" | "gathering" | "anniversary" | "other";
+  date: string;
+  location?: string;
+}
 
 interface AddEventModalProps {
   isOpen: boolean;
+  event?: FamilyEvent | null;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export default function AddEventModal({ isOpen, onClose, onSuccess }: AddEventModalProps) {
+const toLocalInput = (iso: string) => {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+export default function AddEventModal({ isOpen, event, onClose, onSuccess }: AddEventModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [type, setType] = useState<"birthday" | "gathering" | "anniversary" | "other">("other");
   const [date, setDate] = useState("");
+  const [location, setLocation] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const isEdit = Boolean(event);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (event) {
+      setTitle(event.title);
+      setDescription(event.description || "");
+      setType(event.type);
+      setDate(toLocalInput(event.date));
+      setLocation(event.location || "");
+    } else {
+      setTitle("");
+      setDescription("");
+      setType("other");
+      setDate("");
+      setLocation("");
+    }
+    setError("");
+  }, [isOpen, event]);
 
   if (!isOpen) return null;
 
@@ -30,42 +68,29 @@ export default function AddEventModal({ isOpen, onClose, onSuccess }: AddEventMo
 
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/v1/events", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({
-          title,
-          description,
-          type,
-          date: new Date(date).toISOString(),
-        }),
-      });
+      const payload = {
+        title,
+        description,
+        type,
+        date: new Date(date).toISOString(),
+        location,
+      };
+      const data = isEdit
+        ? await api.put(`/events/${event!._id}`, payload)
+        : await api.post("/events", payload);
 
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.message || "Failed to add event");
+      if (!data?.event) {
+        setError(data?.message || (isEdit ? "Failed to update event" : "Failed to add event"));
         return;
       }
 
       onSuccess();
       onClose();
-      resetForm();
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (err: any) {
+      setError(err?.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
-  };
-
-  const resetForm = () => {
-    setTitle("");
-    setDescription("");
-    setType("other");
-    setDate("");
-    setError("");
   };
 
   return (
@@ -73,7 +98,7 @@ export default function AddEventModal({ isOpen, onClose, onSuccess }: AddEventMo
       <div className="bg-[#FFFDFA] rounded-3xl border border-[#EDE3D3] w-full max-w-md max-h-[85vh] flex flex-col">
         {/* Fixed Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#EDE3D3] flex-shrink-0">
-          <h2 className="text-lg font-semibold text-[#3A2E22]">Add Event</h2>
+          <h2 className="text-lg font-semibold text-[#3A2E22]">{isEdit ? "Edit Event" : "Add Event"}</h2>
           <button
             onClick={onClose}
             className="p-1.5 hover:bg-[#F5EFE6] rounded-lg transition-colors"
@@ -138,6 +163,17 @@ export default function AddEventModal({ isOpen, onClose, onSuccess }: AddEventMo
                 className="w-full px-3 py-2.5 rounded-xl border border-[#EDE3D3] bg-white text-sm text-[#3A2E22] focus:outline-none focus:ring-2 focus:ring-[#8B5E3C]/20 focus:border-[#8B5E3C] transition-all"
               />
             </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-[#3A2E22]">Location</label>
+              <input
+                type="text"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="e.g. Grandma's house"
+                className="w-full px-3 py-2.5 rounded-xl border border-[#EDE3D3] bg-white text-sm text-[#3A2E22] placeholder-[#A6987F]/70 focus:outline-none focus:ring-2 focus:ring-[#8B5E3C]/20 focus:border-[#8B5E3C] transition-all"
+              />
+            </div>
           </form>
         </div>
 
@@ -156,7 +192,7 @@ export default function AddEventModal({ isOpen, onClose, onSuccess }: AddEventMo
             disabled={loading}
             className="flex-1 bg-[#4A3428] text-white py-2.5 rounded-xl text-sm font-medium hover:bg-[#3A2E22] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
           >
-            {loading ? "Adding..." : "Add Event"}
+            {loading ? (isEdit ? "Saving..." : "Adding...") : isEdit ? "Save Changes" : "Add Event"}
           </button>
         </div>
       </div>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X, BookOpen } from "lucide-react";
+import { api } from "@/lib/api";
 
 interface AddStoryModalProps {
   isOpen: boolean;
@@ -29,30 +30,22 @@ export default function AddStoryModal({ isOpen, onClose, onSuccess }: AddStoryMo
 
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/v1/stories", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({
-          title,
-          content,
-          toldBy: toldBy || undefined,
-        }),
+      const data = await api.post("/stories", {
+        title,
+        content,
+        toldBy: toldBy || undefined,
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.message || "Failed to add story");
+      if (!data?.story) {
+        setError(data?.message || "Failed to add story");
         return;
       }
 
       onSuccess();
       onClose();
       resetForm();
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (err: any) {
+      setError(err?.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }

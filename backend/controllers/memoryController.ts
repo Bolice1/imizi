@@ -78,22 +78,7 @@ const getMemories = async (req: AuthRequest, res: Response, next: NextFunction):
     }
 }
 
-const getMemoryById = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
-    try {
-        const memory = await MemoryModel.findById(req.params.id).populate('uploadedBy', 'fullName email')
-        if (!memory) {
-            res.status(404).json({ success: false, message: 'Memory not found' })
-            return
-        }
-        res.status(200).json({ success: true, memory })
-    } catch (error) {
-        console.log((error as Error).message)
-        res.status(500).json({ success: false, message: 'Failed to fetch memory' })
-    }
-}
-
 export default {
     createMemory,
-    getMemories,
-    getMemoryById
+    getMemories
 }

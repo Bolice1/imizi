@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { api } from "@/lib/api";
 import { Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, CheckCircle2, User, Ticket } from "lucide-react";
 
 export default function RegisterPage() {
@@ -27,28 +28,27 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:5000/api/v1/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullName, email, password, invitationCode: invitationCode || undefined }),
+      const data = await api.post("/auth/register", {
+        fullName,
+        email,
+        password,
+        invitationCode: invitationCode || undefined,
       });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.message || "Registration failed");
+      if (!data?.token) {
+        setError(data?.message || "Registration failed");
         return;
       }
 
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
-      
+
       if (invitationCode) {
         window.location.href = "/dashboard?joinFamily=true&code=" + encodeURIComponent(invitationCode);
       } else {
         window.location.href = "/dashboard?setupFamily=true";
       }
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (err: any) {
+      setError(err?.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }

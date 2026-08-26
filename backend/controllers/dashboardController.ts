@@ -4,7 +4,6 @@ import { MemoryModel } from '../models/memory.model.js'
 import { StoryModel } from '../models/story.model.js'
 import { EventModel } from '../models/event.model.js'
 import { CommentModel } from '../models/comment.model.js'
-import { FamilyModel } from '../models/family.model.js'
 
 interface AuthRequest extends Request {
     user?: {
@@ -48,7 +47,7 @@ const getDashboardData = async (req: AuthRequest, res: Response, next: NextFunct
             ...(await StoryModel.find({ familyId }).distinct('author'))
         ]).size
 
-        const family = await FamilyModel.findById(familyId).select('familyMembers')
+        const family = await mongoose.model('Family').findById(familyId).select('familyMembers')
 
         res.status(200).json({
             success: true,

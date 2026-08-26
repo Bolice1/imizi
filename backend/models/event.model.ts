@@ -15,6 +15,9 @@ export const eventSchema = new mongoose.Schema({
         type: Date,
         required: true
     },
+    location: {
+        type: String
+    },
     familyId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Family',

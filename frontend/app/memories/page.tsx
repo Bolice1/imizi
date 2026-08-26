@@ -178,9 +178,9 @@ export default function MemoriesPage() {
                         {photo.uploadedBy?.fullName?.split(" ")[0] || "User"}
                       </span>
                     </div>
-                    <button className="px-3 py-1 bg-[#4A3428] text-white rounded-lg text-[10px] font-medium hover:bg-[#3A2E22] transition-colors">
+                    <Link href={`/memories/${photo._id}`} className="px-3 py-1 bg-[#4A3428] text-white rounded-lg text-[10px] font-medium hover:bg-[#3A2E22] transition-colors">
                       View
-                    </button>
+                    </Link>
                   </div>
                 </div>
               ))
@@ -242,9 +242,9 @@ export default function MemoriesPage() {
                         {video.uploadedBy?.fullName?.split(" ")[0] || "User"}
                       </span>
                     </div>
-                    <button className="px-3 py-1 bg-[#4A3428] text-white rounded-lg text-[10px] font-medium hover:bg-[#3A2E22] transition-colors">
+                    <Link href={`/memories/${video._id}`} className="px-3 py-1 bg-[#4A3428] text-white rounded-lg text-[10px] font-medium hover:bg-[#3A2E22] transition-colors">
                       View
-                    </button>
+                    </Link>
                   </div>
                 </div>
               ))

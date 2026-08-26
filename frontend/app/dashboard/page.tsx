@@ -32,7 +32,7 @@ import {
   NotebookPen,
   Ticket,
 } from "lucide-react"
-import { api } from "@/lib/api"
+import { api, ApiError } from "@/lib/api"
 import AddMemoryModal from "@/components/modals/AddMemoryModal"
 import AddEventModal from "@/components/modals/AddEventModal"
 import AddStoryModal from "@/components/modals/AddStoryModal"
@@ -105,12 +105,17 @@ export default function DashboardPage() {
       })
       
       try {
-        const familyResult = await api.get('/family/my-family')
-        if ((familyResult as any).success && (familyResult as any).family) {
-          setFamily((familyResult as any).family)
+        if ((result as any).hasFamily) {
+          const familyResult = await api.get('/family/my-family')
+          if ((familyResult as any).success && (familyResult as any).family) {
+            setFamily((familyResult as any).family)
+          }
         }
       } catch (e) {
-        console.error('Failed to fetch family:', e)
+        const isExpected = e instanceof ApiError && (e.status === 404 || e.message === 'No family found')
+        if (!isExpected) {
+          console.error('Failed to fetch family:', e)
+        }
       }
     } catch (error: any) {
       console.error('Failed to fetch dashboard:', error)

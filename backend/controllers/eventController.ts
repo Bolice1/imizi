@@ -12,7 +12,7 @@ interface AuthRequest extends Request {
 }
 
 const createEvent = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
-    const { title, description, type, date } = req.body
+    const { title, description, type, date, location } = req.body
     const userId = req.user?._id
     const familyId = req.user?.familyId
 
@@ -27,6 +27,7 @@ const createEvent = async (req: AuthRequest, res: Response, next: NextFunction):
             description,
             type,
             date,
+            location,
             familyId: typeof familyId === 'string' ? new mongoose.Types.ObjectId(familyId) : familyId,
             createdBy: userId
         })
@@ -62,7 +63,57 @@ const getEvents = async (req: AuthRequest, res: Response, next: NextFunction): P
     }
 }
 
+const getEvent = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const event = await EventModel.findById(req.params.id)
+        if (!event) {
+            res.status(404).json({ success: false, message: 'Event not found' })
+            return
+        }
+        res.status(200).json({ success: true, event })
+    } catch (error) {
+        console.log((error as Error).message)
+        res.status(500).json({ success: false, message: 'Failed to fetch event' })
+    }
+}
+
+const updateEvent = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    const { title, description, type, date, location } = req.body
+    try {
+        const event = await EventModel.findByIdAndUpdate(
+            req.params.id,
+            { title, description, type, date, location },
+            { new: true, runValidators: true }
+        )
+        if (!event) {
+            res.status(404).json({ success: false, message: 'Event not found' })
+            return
+        }
+        res.status(200).json({ success: true, event })
+    } catch (error) {
+        console.log((error as Error).message)
+        res.status(500).json({ success: false, message: 'Failed to update event' })
+    }
+}
+
+const deleteEvent = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const event = await EventModel.findByIdAndDelete(req.params.id)
+        if (!event) {
+            res.status(404).json({ success: false, message: 'Event not found' })
+            return
+        }
+        res.status(200).json({ success: true, message: 'Event deleted' })
+    } catch (error) {
+        console.log((error as Error).message)
+        res.status(500).json({ success: false, message: 'Failed to delete event' })
+    }
+}
+
 export default {
     createEvent,
-    getEvents
+    getEvents,
+    getEvent,
+    updateEvent,
+    deleteEvent
 }
