@@ -70,6 +70,10 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify(data),
     }),
+    patch: (endpoint: string, data: unknown) => request(endpoint, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+    }),
     delete: (endpoint: string) => request(endpoint, {
         method: 'DELETE',
     }),

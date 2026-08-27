@@ -7,9 +7,16 @@ interface AddEventModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  event?: {
+    _id?: string;
+    title?: string;
+    description?: string;
+    type?: "birthday" | "gathering" | "anniversary" | "celebration" | "appointment" | "other";
+    date?: string;
+  } | null;
 }
 
-export default function AddEventModal({ isOpen, onClose, onSuccess }: AddEventModalProps) {
+export default function AddEventModal({ isOpen, onClose, onSuccess, event }: AddEventModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [type, setType] = useState<"birthday" | "gathering" | "anniversary" | "other">("other");
