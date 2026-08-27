@@ -1,7 +1,6 @@
 .env
 node_modules
-
-
-# backend nodemodules
 backend/node_modules
+backend/dist
+backend/bun.lock
 uploads

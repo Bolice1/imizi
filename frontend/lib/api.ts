@@ -18,11 +18,11 @@ async function request(endpoint: string, options: RequestInit = {}) {
 
     if (!res.ok) {
         let errorMessage = `HTTP ${res.status}`
+        const text = await res.text()
         try {
-            const error = await res.json()
+            const error = JSON.parse(text)
             errorMessage = error.message || errorMessage
         } catch {
-            const text = await res.text()
             errorMessage = text || errorMessage
         }
         throw new Error(errorMessage)

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   Plus,
   Play,
@@ -61,6 +62,7 @@ interface FamilyMember {
 }
 
 export default function DashboardPage() {
+  const router = useRouter()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [showCreateFamily, setShowCreateFamily] = useState(false)
@@ -502,7 +504,10 @@ export default function DashboardPage() {
                   <NotebookPen className="w-4 h-4" />
                   <span className="text-sm font-medium">Story</span>
                 </button>
-                <button className="w-full flex items-center justify-center gap-2 px-3 py-2.5 border border-[#EDE3D3] text-[#3A2E22] rounded-xl hover:bg-[#F5EFE6] transition-colors">
+                <button
+                  onClick={() => router.push("/meetings")}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2.5 border border-[#EDE3D3] text-[#3A2E22] rounded-xl hover:bg-[#F5EFE6] transition-colors"
+                >
                   <Phone className="w-4 h-4" />
                   <span className="text-sm font-medium">Call</span>
                 </button>
