@@ -295,6 +295,12 @@ export default function DashboardPage() {
     return `${Math.floor(diffDays / 7)} weeks ago`
   }
 
+  const getEventDate = (event: any) => {
+    const raw = event.startAt || event.date
+    const d = new Date(raw)
+    return isNaN(d.getTime()) ? null : d
+  }
+
   return (
     <div className="space-y-8">
       {/* Welcome Section */}
@@ -329,16 +335,25 @@ export default function DashboardPage() {
                     key={i}
                     className="flex-shrink-0 w-64 bg-[#FFFDFA] rounded-2xl border border-[#EDE3D3] p-4 hover:shadow-md transition-shadow cursor-pointer"
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-[#4A3428] text-white flex flex-col items-center justify-center">
-                        <span className="text-xs font-medium">{new Date(event.date).toLocaleString('default', { month: 'short' }).toUpperCase()}</span>
-                        <span className="text-lg font-bold leading-none">{new Date(event.date).getDate()}</span>
+                      <div className="flex items-start gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-[#4A3428] text-white flex flex-col items-center justify-center">
+                           {(() => {
+                             const d = getEventDate(event)
+                             return d ? (
+                               <>
+                                 <span className="text-xs font-medium">{d.toLocaleString('default', { month: 'short' }).toUpperCase()}</span>
+                                 <span className="text-lg font-bold leading-none">{d.getDate()}</span>
+                               </>
+                             ) : (
+                               <span className="text-[10px] font-medium">NO DATE</span>
+                             )
+                           })()}
+                        </div>
+                        <div>
+                          <h3 className="font-medium text-[#3A2E22] text-sm">{event.title}</h3>
+                          <p className="text-xs text-[#A6987F] mt-0.5">{event.type}</p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-medium text-[#3A2E22] text-sm">{event.title}</h3>
-                        <p className="text-xs text-[#A6987F] mt-0.5">{event.type}</p>
-                      </div>
-                    </div>
                   </div>
                 ))
               )}

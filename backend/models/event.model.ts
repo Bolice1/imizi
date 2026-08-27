@@ -3,27 +3,66 @@ import mongoose from 'mongoose'
 export const eventSchema = new mongoose.Schema({
     title: {
         type: String,
-        required: true
+        required: [true, 'Title is required'],
+        trim: true,
+        maxlength: [200, 'Title cannot exceed 200 characters']
     },
-    description: String,
+    description: {
+        type: String,
+        trim: true,
+        maxlength: [1000, 'Description cannot exceed 1000 characters']
+    },
     type: {
         type: String,
-        enum: ['birthday', 'gathering', 'anniversary', 'other'],
+        enum: {
+            values: ['birthday', 'gathering', 'anniversary', 'celebration', 'appointment', 'other'],
+            message: 'Unsupported event type'
+        },
         default: 'other'
     },
-    date: {
+    startAt: {
         type: Date,
-        required: true
+        required: [true, 'Start date is required']
+    },
+    endAt: {
+        type: Date,
+        validate: {
+            validator: function (this: any, value: Date) {
+                if (!value) return true
+                return value >= this.startAt
+            },
+            message: 'End time cannot be before start time'
+        }
+    },
+    location: {
+        type: String,
+        trim: true,
+        maxlength: [200, 'Location cannot exceed 200 characters']
+    },
+    relatedMemberId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
     },
     familyId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Family',
-        required: true
+        required: [true, 'Family is required']
     },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true
+        required: [true, 'Creator is required']
+    },
+    visibility: {
+        type: String,
+        enum: {
+            values: ['family', 'private'],
+            message: 'Visibility must be family or private'
+        },
+        default: 'family'
+    },
+    recurrence: {
+        type: mongoose.Schema.Types.Mixed
     }
 }, { timestamps: true })
 

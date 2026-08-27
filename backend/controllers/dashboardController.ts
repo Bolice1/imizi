@@ -35,7 +35,7 @@ const getDashboardData = async (req: AuthRequest, res: Response, next: NextFunct
         const familyId = typeof req.user.familyId === 'string' ? new mongoose.Types.ObjectId(req.user.familyId) : req.user.familyId
 
         const [upcomingEvents, memories, stories, comments] = await Promise.all([
-            EventModel.find({ familyId }).sort({ date: 1 }).limit(3),
+            EventModel.find({ familyId }).sort({ startAt: 1 }).limit(3),
             MemoryModel.find({ familyId }).sort({ createdAt: -1 }).limit(10).populate('uploadedBy', 'fullName'),
             StoryModel.find({ familyId }).sort({ createdAt: -1 }).limit(5).populate('author', 'fullName'),
             CommentModel.find({ familyId }).sort({ createdAt: -1 }).limit(5).populate('author', 'fullName')
