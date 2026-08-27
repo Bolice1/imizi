@@ -57,7 +57,11 @@ export default function InvitePage({ params }: PageProps) {
         return
       }
 
-      const data = await api.post('/family/join', { token: resolvedParams.token })
+      const data = await api.post('/family/join', { code: resolvedParams.token })
+      const updatedUser = (data as any).user
+      if (updatedUser) {
+        localStorage.setItem('user', JSON.stringify(updatedUser))
+      }
       setSuccess(true)
       setTimeout(() => {
         router.push("/dashboard")

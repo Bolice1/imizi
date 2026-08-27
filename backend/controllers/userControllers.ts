@@ -1,21 +1,14 @@
 import { Request, Response, NextFunction } from 'express'
-import crypto from 'crypto'
 import { UserModel } from '../models/user.model.js'
-import { FamilyModel } from '../models/family.model.js'
-import { InvitationModel } from '../models/invitation.model.js'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcrypt'
 import dotenv from 'dotenv'
 import emailUtils from '../utils/email.js'
+import crypto from 'crypto'
+import path from 'path'
+import fs from 'fs'
 
 dotenv.config()
-
-const signToken = (userId: string): string =>
-    jwt.sign(
-        { user: { _id: userId } },
-        process.env.JWT_SECRET as string,
-        { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') } as jwt.SignOptions
-    )
 
 const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { fullName, email, password, invitationCode } = req.body
@@ -28,67 +21,36 @@ const register = async (req: Request, res: Response, next: NextFunction): Promis
     }
 
     try {
-        const normalizedEmail = String(email).toLowerCase().trim()
-        const existing = await UserModel.findOne({ email: normalizedEmail })
-        if (existing) {
-            res.status(409).json({
-                success: false,
-                message: 'A user with this email already exists'
-            })
-            return
-        }
-
         const hashedPassword = await bcrypt.hash(password, 10)
         const newUser = await UserModel.create({
             fullName,
-            email: normalizedEmail,
+            email,
             password: hashedPassword,
             invitationCode: invitationCode || undefined
         })
+        const host = req.get('host')
+        const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http'
+        const frontendUrl = process.env.FRONTEND_URL || `${protocol}://${host}`
+        const loginUrl = `${frontendUrl}/login`
 
-        const user = await UserModel.findById(newUser._id).select('-password')
-        if (!user) {
-            res.status(500).json({ success: false, message: 'Failed to create user' })
-            return
-        }
+        const token = jwt.sign(
+            { user: { _id: newUser._id } },
+            process.env.JWT_SECRET as string,
+            { expiresIn: '7d' }
+        )
 
-        // Best-effort: join a family if a valid invitation code was supplied.
-        if (invitationCode) {
-            try {
-                const invitation = await InvitationModel.findOne({ code: String(invitationCode).toUpperCase() })
-                if (invitation && invitation.status === 'pending' && invitation.expiresAt > new Date()) {
-                    const family = await FamilyModel.findById(invitation.familyId)
-                    if (family) {
-                        const members = family.familyMembers || []
-                        if (!members.some((m: any) => m.equals(newUser._id))) {
-                            members.push(newUser._id)
-                            family.familyMembers = members
-                            await family.save()
-                        }
-                        user!.familyId = family._id
-                        user!.role = 'user'
-                        await user!.save()
-                        invitation.status = 'accepted'
-                        await invitation.save()
-                    }
-                }
-            } catch (joinErr) {
-                console.log('Auto-join failed (ignored):', (joinErr as Error).message)
-            }
-        }
+        const userToReturn = await UserModel.findById(newUser._id).select('-password')
 
-        const token = signToken(user!._id.toString())
-        const freshUser = await UserModel.findById(newUser._id).select('-password')
+        emailUtils.sendWelcomeEmail(fullName, loginUrl, email).then(() => {
+            console.log('Welcome email sent')
+        })
 
         res.status(201).json({
             success: true,
             message: 'User registered',
             token,
-            user: freshUser
+            user: userToReturn
         })
-
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
-        emailUtils.sendWelcomeEmail(fullName, `${frontendUrl}/login`, normalizedEmail).catch(() => {})
     } catch (error) {
         console.log((error as Error).message)
         next(error)
@@ -106,12 +68,12 @@ const logIn = async (req: Request, res: Response, next: NextFunction): Promise<v
     }
 
     try {
-        const normalizedEmail = String(email).toLowerCase().trim()
-        const user = await UserModel.findOne({ email: normalizedEmail }).select('+password')
+        const user = await UserModel.findOne({ email }).select('+password')
+        const userToReturn = await UserModel.findOne({ email }).select('-password')
         if (!user) {
             res.status(400).json({
                 success: false,
-                message: 'invalid credentials'
+                message: 'User not found'
             })
             return
         }
@@ -124,8 +86,11 @@ const logIn = async (req: Request, res: Response, next: NextFunction): Promise<v
             return
         }
 
-        const token = signToken(user._id.toString())
-        const userToReturn = await UserModel.findById(user._id).select('-password')
+        const token = jwt.sign(
+            { user: { _id: user._id } },
+            process.env.JWT_SECRET as string,
+            { expiresIn: '7d' }
+        )
 
         res.status(200).json({
             success: true,
@@ -134,8 +99,60 @@ const logIn = async (req: Request, res: Response, next: NextFunction): Promise<v
             user: userToReturn
         })
     } catch (error) {
+        res.status(500).json({
+            message: 'Internal server error'
+        })
         console.log((error as Error).message)
-        next(error)
+    }
+}
+
+const getProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const userId = (req as any).user?._id
+
+    if (!userId) {
+        res.status(401).json({ success: false, message: 'Unauthorized' })
+        return
+    }
+
+    try {
+        const user = await UserModel.findById(userId).select('-password')
+        if (!user) {
+            res.status(404).json({ success: false, message: 'User not found' })
+            return
+        }
+
+        res.status(200).json({ success: true, user })
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to fetch profile' })
+        console.log((error as Error).message)
+    }
+}
+
+const updateProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const userId = (req as any).user?._id
+    const { fullName, email } = req.body
+
+    if (!userId) {
+        res.status(401).json({ success: false, message: 'Unauthorized' })
+        return
+    }
+
+    try {
+        const updated = await UserModel.findByIdAndUpdate(
+            userId,
+            { fullName, email },
+            { new: true }
+        ).select('-password')
+
+        if (!updated) {
+            res.status(404).json({ success: false, message: 'User not found' })
+            return
+        }
+
+        res.status(200).json({ success: true, user: updated })
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to update profile' })
+        console.log((error as Error).message)
     }
 }
 
@@ -150,11 +167,11 @@ const forgotPassword = async (req: Request, res: Response, next: NextFunction): 
     }
 
     try {
-        const user = await UserModel.findOne({ email: String(email).toLowerCase().trim() })
+        const user = await UserModel.findOne({ email })
         if (!user) {
             res.status(400).json({
                 success: false,
-                message: 'invalid credentials'
+                message: 'User not found'
             })
             return
         }
@@ -164,18 +181,19 @@ const forgotPassword = async (req: Request, res: Response, next: NextFunction): 
         user.resetTokenExpires = Date.now() + (30 * 60 * 1000)
         await user.save()
 
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
+        const host = req.get('host')
+        const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http'
+        const frontendUrl = process.env.FRONTEND_URL || `${protocol}://${host}`
         const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`
-
-        // Respond first, then attempt to send the email (non-blocking).
-        res.status(200).json({
-            success: true,
-            message: 'Reset Link has been sent to your email'
+        emailUtils.sendResetPasswordEmail(user.fullName, email, resetUrl).then(() => {
+            res.status(200).json({
+                success: true,
+                message: 'Reset Link has been sent to your email'
+            })
         })
-        emailUtils.sendResetPasswordEmail(user.fullName, email, resetUrl).catch(() => {})
+
     } catch (error) {
         console.log((error as Error).message)
-        next(error)
     }
 }
 
@@ -192,26 +210,25 @@ const restPassword = async (req: Request, res: Response, next: NextFunction): Pr
         return
     }
 
+    const user = await UserModel.findOne({ email })
+    if (!user) {
+        res.status(400).json({
+            success: false,
+            message: 'Invalid reset link'
+        })
+        return
+    }
+
+    if(!user.resetToken){
+        res.status(400).json({
+            success:false,
+            message:"Reset link expired"
+        })
+        return
+    }
+    const newHashedPassword = await bcrypt.hash(newPassword, 10)
+
     try {
-        const user = await UserModel.findOne({ email })
-        if (!user) {
-            res.status(400).json({
-                success: false,
-                message: 'Invalid reset link'
-            })
-            return
-        }
-
-        if (!user.resetToken) {
-            res.status(400).json({
-                success: false,
-                message: 'Reset link expired'
-            })
-            return
-        }
-
-        const newHashedPassword = await bcrypt.hash(newPassword, 10)
-
         if (!(resetToken === user.resetToken)) {
             res.status(400).json({
                 success: false,
@@ -223,7 +240,7 @@ const restPassword = async (req: Request, res: Response, next: NextFunction): Pr
         if (!user.resetTokenExpires || user.resetTokenExpires < Date.now()) {
             res.status(400).json({
                 success: false,
-                message: 'The reset link has expired'
+                message: 'The resent link has expired'
             })
             return
         }
@@ -237,16 +254,51 @@ const restPassword = async (req: Request, res: Response, next: NextFunction): Pr
             success: true,
             message: 'Your password has been reset successfully'
         })
+
     } catch (error) {
         console.log((error as Error).message)
-        next(error)
     }
+
 }
 
+const uploadProfilePicture = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const userId = (req as any).user?._id
+
+    if (!userId) {
+        res.status(401).json({ success: false, message: 'Unauthorized' })
+        return
+    }
+
+    try {
+        if (!req.file) {
+            res.status(400).json({ success: false, message: 'No file uploaded' })
+            return
+        }
+
+        const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http'
+        const host = req.get('host')
+        const baseUrl = `${protocol}://${host}`
+        const fileUrl = `${baseUrl}/uploads/${path.basename(req.file.filename)}`
+
+        const updatedUser = await UserModel.findByIdAndUpdate(
+            userId,
+            { profilePicture: fileUrl },
+            { new: true }
+        ).select('-password')
+
+        res.status(200).json({ success: true, user: updatedUser, profilePicture: fileUrl })
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Failed to upload profile picture' })
+        console.log((error as Error).message)
+    }
+}
 
 export default {
     register,
     logIn,
     forgotPassword,
-    restPassword
+    restPassword,
+    getProfile,
+    updateProfile,
+    uploadProfilePicture
 }

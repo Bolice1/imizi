@@ -42,9 +42,54 @@ export const userSchema = new mongoose.Schema({
     },
 
     resetToken: String,
-    resetTokenExpires: Number
+    resetTokenExpires: Number,
+
+    profilePicture: {
+        type: String,
+        required: false,
+        unique: false
+    },
+
+    generation: {
+        type: Number,
+        required: false,
+        unique: false
+    },
+
+    parentId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: false,
+        unique: false
+    },
+
+    partnerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: false,
+        unique: false
+    },
+
+    status: {
+        type: String,
+        required: false,
+        enum: ['living', 'remembered'],
+        default: 'living'
+    },
+
+    relationship: {
+        type: String,
+        required: false,
+        unique: false
+    },
+
+    gender: {
+        type: String,
+        required: false,
+        unique: false,
+        enum: ['male', 'female']
+    }
 
 }, { timestamps: true })
-
 
 export const UserModel = mongoose.model('User', userSchema)

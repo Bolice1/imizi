@@ -1,16 +1,34 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Upload, Loader2, ImageIcon } from "lucide-react";
+import { X, Loader2, ImageIcon } from "lucide-react";
 import { api } from "@/lib/api";
 
-interface AddStoryModalProps {
+interface Story {
+  _id: string;
+  title: string;
+  content?: string;
+  toldBy?: string;
+  audioUrl?: string;
+  thumbnailUrl?: string;
+  author?: {
+    _id: string;
+    fullName: string;
+    profilePicture?: string;
+  };
+  likes?: string[];
+  comments?: string[];
+  createdAt: string;
+}
+
+interface EditStoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  story: Story | null;
 }
 
-export default function AddStoryModal({ isOpen, onClose, onSuccess }: AddStoryModalProps) {
+export default function EditStoryModal({ isOpen, onClose, onSuccess, story }: EditStoryModalProps) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [toldBy, setToldBy] = useState("");
@@ -22,26 +40,28 @@ export default function AddStoryModal({ isOpen, onClose, onSuccess }: AddStoryMo
   const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
   useEffect(() => {
-    if (isOpen) {
-      setTitle("");
-      setContent("");
-      setToldBy("");
+    if (story) {
+      setTitle(story.title || "");
+      setContent(story.content || "");
+      setToldBy(story.toldBy || "");
+      setCoverUrl(story.thumbnailUrl || "");
+      setCoverPreview(story.thumbnailUrl || null);
       setCoverFile(null);
-      setCoverPreview(null);
-      setCoverUrl("");
       setError("");
     }
-  }, [isOpen]);
+  }, [story]);
 
   useEffect(() => {
     if (coverFile) {
       const objectUrl = URL.createObjectURL(coverFile);
       setCoverPreview(objectUrl);
       return () => URL.revokeObjectURL(objectUrl);
+    } else if (story?.thumbnailUrl) {
+      setCoverPreview(story.thumbnailUrl);
     } else {
       setCoverPreview(null);
     }
-  }, [coverFile]);
+  }, [coverFile, story?.thumbnailUrl]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,7 +93,7 @@ export default function AddStoryModal({ isOpen, onClose, onSuccess }: AddStoryMo
         thumbnailUrl = uploadData.url;
       }
 
-      await api.post("/stories", {
+      await api.put(`/stories/${story?._id}`, {
         title,
         content,
         toldBy,
@@ -94,13 +114,13 @@ export default function AddStoryModal({ isOpen, onClose, onSuccess }: AddStoryMo
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !story) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
       <div className="bg-[#FFFDFA] rounded-3xl border border-[#EDE3D3] w-full max-w-md max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#EDE3D3] flex-shrink-0">
-          <h2 className="text-lg font-semibold text-[#3A2E22]">Add Story</h2>
+          <h2 className="text-lg font-semibold text-[#3A2E22]">Edit Story</h2>
           <button onClick={onClose} className="p-1.5 hover:bg-[#F5EFE6] rounded-lg transition-colors">
             <X className="w-5 h-5 text-[#8B5E3C]" />
           </button>
@@ -157,10 +177,10 @@ export default function AddStoryModal({ isOpen, onClose, onSuccess }: AddStoryMo
                   accept="image/*"
                   onChange={(e) => setCoverFile(e.target.files?.[0] || null)}
                   className="hidden"
-                  id="story-cover-upload"
+                  id="story-cover-edit"
                 />
                 <label
-                  htmlFor="story-cover-upload"
+                  htmlFor="story-cover-edit"
                   className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-[#EDE3D3] rounded-xl cursor-pointer hover:border-[#8B5E3C] transition-colors"
                 >
                   {coverPreview ? (
@@ -200,10 +220,10 @@ export default function AddStoryModal({ isOpen, onClose, onSuccess }: AddStoryMo
             {loading ? (
               <span className="flex items-center justify-center gap-2">
                 <Loader2 className="animate-spin h-4 w-4" />
-                Adding...
+                Saving...
               </span>
             ) : (
-              "Add Story"
+              "Save Changes"
             )}
           </button>
         </div>

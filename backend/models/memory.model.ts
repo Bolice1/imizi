@@ -8,7 +8,7 @@ export const memorySchema = new mongoose.Schema({
     description: String,
     type: {
         type: String,
-        enum: ['photo', 'video'],
+        enum: ['photo', 'video', 'link'],
         required: true
     },
     mediaUrl: {

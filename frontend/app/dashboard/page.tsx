@@ -36,6 +36,7 @@ import { api } from "@/lib/api"
 import AddMemoryModal from "@/components/modals/AddMemoryModal"
 import AddEventModal from "@/components/modals/AddEventModal"
 import AddStoryModal from "@/components/modals/AddStoryModal"
+import Avatar from "@/components/Avatar"
 
 interface DashboardData {
   hasFamily: boolean
@@ -56,6 +57,7 @@ interface FamilyMember {
   fullName: string
   email: string
   role?: string
+  profilePicture?: string
 }
 
 export default function DashboardPage() {
@@ -90,6 +92,8 @@ export default function DashboardPage() {
     try {
       const result = await api.get('/dashboard')
       const payload = (result as any).data || result
+      const familyData = (result as any).family || null
+      
       setData({
         hasFamily: (result as any).hasFamily ?? true,
         upcomingEvents: payload.upcomingEvents ?? [],
@@ -104,13 +108,17 @@ export default function DashboardPage() {
         },
       })
       
-      try {
-        const familyResult = await api.get('/family/my-family')
-        if ((familyResult as any).success && (familyResult as any).family) {
-          setFamily((familyResult as any).family)
+      if (familyData) {
+        setFamily(familyData)
+      } else {
+        try {
+          const familyResult = await api.get('/family/my-family')
+          if ((familyResult as any).success && (familyResult as any).family) {
+            setFamily((familyResult as any).family)
+          }
+        } catch (e) {
+          console.error('Failed to fetch family:', e)
         }
-      } catch (e) {
-        console.error('Failed to fetch family:', e)
       }
     } catch (error: any) {
       console.error('Failed to fetch dashboard:', error)
@@ -144,7 +152,11 @@ export default function DashboardPage() {
 
     setCreating(true)
     try {
-      await api.post('/family/create', { familyName })
+      const result = await api.post('/family/create', { familyName })
+      const updatedUser = (result as any).user
+      if (updatedUser) {
+        localStorage.setItem('user', JSON.stringify(updatedUser))
+      }
       await fetchDashboard()
       setShowCreateFamily(false)
       setFamilyName("")
@@ -161,7 +173,11 @@ export default function DashboardPage() {
 
     setJoining(true)
     try {
-      await api.post('/family/join', { code: invitationCode })
+      const result = await api.post('/family/join', { code: invitationCode })
+      const updatedUser = (result as any).user
+      if (updatedUser) {
+        localStorage.setItem('user', JSON.stringify(updatedUser))
+      }
       await fetchDashboard()
       setShowJoinFamily(false)
       setInvitationCode("")
@@ -295,12 +311,6 @@ export default function DashboardPage() {
     return `${Math.floor(diffDays / 7)} weeks ago`
   }
 
-  const getEventDate = (event: any) => {
-    const raw = event.startAt || event.date
-    const d = new Date(raw)
-    return isNaN(d.getTime()) ? null : d
-  }
-
   return (
     <div className="space-y-8">
       {/* Welcome Section */}
@@ -309,14 +319,14 @@ export default function DashboardPage() {
         <p className="text-[#8B5E3C]">Here&apos;s what your family has been up to lately. You&apos;ve been missed.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Main Content - Left/Center */}
         <div className="lg:col-span-8 space-y-6">
           {/* Coming Up */}
           <section>
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-sm font-semibold text-[#8B5E3C] uppercase tracking-wider">Coming Up</h2>
-              <Link href="/calendar" className="text-sm text-[#8B5E3C] hover:text-[#4A3428] flex items-center gap-1 transition-colors">
+              <h2 className="text-base font-semibold text-[#3A2E22]">Coming Up</h2>
+              <Link href="/calendar" className="text-sm text-[#8B5E3C] hover:text-[#4A3428] flex items-center gap-1 transition-colors font-medium">
                 See all <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
@@ -324,7 +334,7 @@ export default function DashboardPage() {
               {data.upcomingEvents.length === 0 ? (
                 <div className="flex-shrink-0 w-full bg-[#FFFDFA] rounded-2xl border border-[#EDE3D3] p-8 text-center">
                   <CalendarIcon className="w-12 h-12 text-[#A6987F] mx-auto mb-3" />
-                  <p className="text-sm text-[#8B5E3C]">No upcoming events</p>
+                  <p className="text-base text-[#8B5E3C] font-medium">No upcoming events</p>
                   <Link href="/calendar" className="inline-flex items-center gap-1 text-sm text-[#4A3428] font-medium mt-2 hover:underline">
                     <Plus className="w-4 h-4" /> Add event
                   </Link>
@@ -333,27 +343,18 @@ export default function DashboardPage() {
                 data.upcomingEvents.map((event: any, i: number) => (
                   <div
                     key={i}
-                    className="flex-shrink-0 w-64 bg-[#FFFDFA] rounded-2xl border border-[#EDE3D3] p-4 hover:shadow-md transition-shadow cursor-pointer"
+                    className="flex-shrink-0 w-64 bg-[#FFFDFA] rounded-2xl border border-[#EDE3D3] p-5 hover:shadow-md transition-shadow cursor-pointer"
                   >
-                      <div className="flex items-start gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-[#4A3428] text-white flex flex-col items-center justify-center">
-                           {(() => {
-                             const d = getEventDate(event)
-                             return d ? (
-                               <>
-                                 <span className="text-xs font-medium">{d.toLocaleString('default', { month: 'short' }).toUpperCase()}</span>
-                                 <span className="text-lg font-bold leading-none">{d.getDate()}</span>
-                               </>
-                             ) : (
-                               <span className="text-[10px] font-medium">NO DATE</span>
-                             )
-                           })()}
-                        </div>
-                        <div>
-                          <h3 className="font-medium text-[#3A2E22] text-sm">{event.title}</h3>
-                          <p className="text-xs text-[#A6987F] mt-0.5">{event.type}</p>
-                        </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-12 h-12 rounded-xl bg-[#4A3428] text-white flex flex-col items-center justify-center">
+                        <span className="text-xs font-medium">{new Date(event.date).toLocaleString('default', { month: 'short' }).toUpperCase()}</span>
+                        <span className="text-lg font-bold leading-none">{new Date(event.date).getDate()}</span>
                       </div>
+                      <div>
+                        <h3 className="font-medium text-[#3A2E22] text-base">{event.title}</h3>
+                        <p className="text-sm text-[#A6987F] mt-0.5">{event.type}</p>
+                      </div>
+                    </div>
                   </div>
                 ))
               )}
@@ -363,7 +364,7 @@ export default function DashboardPage() {
           {/* Lately in the Family */}
           <section>
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-sm font-semibold text-[#8B5E3C] uppercase tracking-wider">Lately in the Family</h2>
+              <h2 className="text-base font-semibold text-[#3A2E22]">Lately in the Family</h2>
               <div className="flex gap-2">
                 {["All", "Photos", "Videos", "Stories"].map((tab) => (
                   <button
@@ -407,20 +408,22 @@ export default function DashboardPage() {
                       </span>
                     </div>
                     <div className="absolute bottom-0 left-0 right-0 p-6">
-                      <p className="text-white text-lg mb-2">&quot;{data.memories[0].title}&quot;</p>
+                      <p className="text-white text-xl mb-2">&quot;{data.memories[0].title}&quot;</p>
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-[#8B5E3C] text-white flex items-center justify-center text-xs font-medium">
-                            {data.memories[0].uploadedBy?.fullName?.charAt(0) || 'U'}
-                          </div>
-                          <span className="text-white/90 text-sm">{data.memories[0].uploadedBy?.fullName || 'User'} · {new Date(data.memories[0].createdAt).toLocaleDateString()}</span>
+                        <div className="flex items-center gap-3">
+                          <Avatar
+                            src={data.memories[0].uploadedBy?.profilePicture}
+                            name={data.memories[0].uploadedBy?.fullName}
+                            size="md"
+                          />
+                          <span className="text-white/90 text-base">{data.memories[0].uploadedBy?.fullName || 'User'} · {new Date(data.memories[0].createdAt).toLocaleDateString()}</span>
                         </div>
                         <div className="flex items-center gap-4 text-white/80">
                           <button className="flex items-center gap-1 hover:text-white transition-colors">
-                            <Heart className="w-4 h-4" /> {data.memories[0].likes?.length || 0}
+                            <Heart className="w-5 h-5" /> {data.memories[0].likes?.length || 0}
                           </button>
                           <button className="flex items-center gap-1 hover:text-white transition-colors">
-                            <MessageCircle className="w-4 h-4" /> {data.memories[0].comments?.length || 0}
+                            <MessageCircle className="w-5 h-5" /> {data.memories[0].comments?.length || 0}
                           </button>
                         </div>
                       </div>
@@ -433,13 +436,16 @@ export default function DashboardPage() {
               {data.stories.length > 0 && (
                 <div className="bg-[#FFFDFA] rounded-2xl border border-[#EDE3D3] p-6">
                   <div className="flex gap-4">
-                    <div className="w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 bg-[#F5EFE6] flex items-center justify-center">
-                      <BookOpen className="w-8 h-8 text-[#8B5E3C]" />
-                    </div>
+                    <Avatar
+                      src={data.stories[0].author?.profilePicture}
+                      name={data.stories[0].author?.fullName || data.stories[0].toldBy || 'Unknown'}
+                      size="lg"
+                      className="w-24 h-24 text-base"
+                    />
                     <div className="flex-1">
                       <span className="inline-block bg-[#F5EFE6] text-[#8B5E3C] text-xs font-medium px-2 py-1 rounded-full mb-2">A STORY</span>
-                      <h3 className="text-[#3A2E22] mb-1">&quot;{data.stories[0].title}&quot;</h3>
-                      <p className="text-sm text-[#A6987F]">Told by {data.stories[0].toldBy || data.stories[0].author?.fullName || 'Unknown'}</p>
+                      <h3 className="text-[#3A2E22] text-lg mb-1">&quot;{data.stories[0].title}&quot;</h3>
+                      <p className="text-base text-[#A6987F]">Told by {data.stories[0].toldBy || data.stories[0].author?.fullName || 'Unknown'}</p>
                       {data.stories[0].audioUrl && (
                         <button className="mt-3 inline-flex items-center gap-2 bg-[#4A3428] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#3A2E22] transition-colors">
                           <Play className="w-4 h-4" /> Listen
@@ -453,8 +459,8 @@ export default function DashboardPage() {
               {data.memories.length === 0 && data.stories.length === 0 && (
                 <div className="bg-[#FFFDFA] rounded-2xl border border-[#EDE3D3] p-12 text-center">
                   <ImageIcon className="w-12 h-12 text-[#A6987F] mx-auto mb-3" />
-                  <p className="text-sm text-[#8B5E3C] mb-4">No memories or stories yet</p>
-                  <p className="text-xs text-[#A6987F]">Start by adding your first photo, video, or story to the family archive.</p>
+                  <p className="text-base text-[#8B5E3C] mb-4 font-medium">No memories or stories yet</p>
+                  <p className="text-sm text-[#A6987F]">Start by adding your first photo, video, or story to the family archive.</p>
                 </div>
               )}
             </div>
@@ -462,11 +468,11 @@ export default function DashboardPage() {
         </div>
 
         {/* Right Sidebar */}
-        <div className="lg:col-span-4 space-y-4">
+        <div className="lg:col-span-4 space-y-5">
           <div className="grid grid-cols-2 gap-4">
             {/* Quick Actions */}
-            <div className="bg-[#FFFDFA] rounded-2xl border border-[#EDE3D3] p-4">
-              <h3 className="text-xs font-semibold text-[#8B5E3C] uppercase tracking-wider mb-3">Quick Actions</h3>
+            <div className="bg-[#FFFDFA] rounded-2xl border border-[#EDE3D3] p-5">
+              <h3 className="text-sm font-semibold text-[#3A2E22] mb-4">Quick Actions</h3>
               <div className="space-y-2">
                 <button
                   onClick={() => setShowAddPhoto(true)}
@@ -504,187 +510,167 @@ export default function DashboardPage() {
             </div>
 
             {/* Family Activity */}
-            <div className="bg-[#FFFDFA] rounded-2xl border border-[#EDE3D3] p-4">
-              <h3 className="text-[11px] font-semibold text-[#8B5E3C] uppercase tracking-wider mb-2">Family Activity</h3>
-              <div className="flex flex-col items-center mb-3">
-                <div className="relative w-16 h-16">
-                  <svg className="w-16 h-16 transform -rotate-90">
-                    <circle cx="32" cy="32" r="28" stroke="#F5EFE6" strokeWidth="6" fill="none" />
-                    <circle cx="32" cy="32" r="28" stroke="#8B5E3C" strokeWidth="6" fill="none" strokeDasharray="175.9" strokeDashoffset="22.9" strokeLinecap="round" />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center">
-                      <span className="text-lg font-bold text-[#3A2E22]">{Math.round((data.stats.activeMembers / Math.max(1, data.stats.totalMembers)) * 100)}</span>
-                      <span className="block text-[9px] text-[#A6987F]">score</span>
+            <div className="bg-[#FFFDFA] rounded-2xl border border-[#EDE3D3] p-5">
+              <h3 className="text-sm font-semibold text-[#3A2E22] mb-3">Family Activity</h3>
+              <div className="flex flex-col items-center mb-4">
+                {(() => {
+                  const pct = Math.round((data.stats.activeMembers / Math.max(1, data.stats.totalMembers)) * 100)
+                  const radius = 28
+                  const circumference = 2 * Math.PI * radius
+                  const offset = circumference - (pct / 100) * circumference
+                  const strokeColor = pct < 40 ? '#EF4444' : pct < 70 ? '#F59E0B' : '#22C55E'
+                  return (
+                    <div className="relative w-16 h-16">
+                      <svg className="w-16 h-16 transform -rotate-90">
+                        <circle cx="32" cy="32" r={radius} stroke="#F5EFE6" strokeWidth="6" fill="none" />
+                        <circle cx="32" cy="32" r={radius} stroke={strokeColor} strokeWidth="6" fill="none" strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="text-center">
+                          <span className="text-xl font-bold text-[#3A2E22]">{pct}</span>
+                          <span className="block text-xs text-[#A6987F]">score</span>
+                        </div>
+                      </div>
                     </div>
+                  )
+                })()}
+              </div>
+              <p className="text-sm text-[#A6987F] text-center mb-4">Family engagement this month</p>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4 text-[#8B5E3C]" />
+                    <span className="text-sm text-[#3A2E22]">Photos shared</span>
                   </div>
+                  <span className="text-sm font-medium text-[#3A2E22]">{data.stats.totalMemories} this month</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-[#8B5E3C]" />
+                    <span className="text-sm text-[#3A2E22]">Stories written</span>
+                  </div>
+                  <span className="text-sm font-medium text-[#3A2E22]">{data.stats.totalStories} this month</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-[#8B5E3C]" />
+                    <span className="text-sm text-[#3A2E22]">Active members</span>
+                  </div>
+                  <span className="text-sm font-medium text-[#3A2E22]">{data.stats.activeMembers} of {data.stats.totalMembers}</span>
                 </div>
               </div>
-              <p className="text-[10px] text-[#A6987F] text-center mb-3">Family engagement this month</p>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <ImageIcon className="w-3 h-3 text-[#8B5E3C]" />
-                    <span className="text-[11px] text-[#3A2E22]">Photos shared</span>
+            </div>
+          </div>
+
+           {/* Family Members */}
+           <div className="bg-[#FFFDFA] rounded-2xl border border-[#EDE3D3] p-5">
+             <div className="flex justify-between items-center mb-4">
+               <h3 className="text-base font-semibold text-[#3A2E22]">Family Members</h3>
+               <span className="text-sm text-[#8B5E3C] font-medium">{data.stats.totalMembers} members</span>
+             </div>
+             <p className="text-sm text-[#A6987F] mb-4">{data.stats.activeMembers} active today</p>
+             
+             {/* Member avatars row */}
+             <div className="flex items-center gap-3 mb-5">
+               {family?.familyMembers?.slice(0, 5).map((member, idx) => (
+                 <Avatar
+                   key={member._id || idx}
+                   src={member.profilePicture}
+                   name={member.fullName}
+                   size="md"
+                 />
+               ))}
+               {family?.familyMembers && family.familyMembers.length > 5 && (
+                 <div className="w-9 h-9 rounded-full bg-[#F5EFE6] text-[#8B5E3C] flex items-center justify-center text-sm font-medium">
+                   +{family.familyMembers.length - 5}
+                 </div>
+               )}
+             </div>
+
+             {/* Recent activity */}
+             <div className="space-y-3">
+               {data.memories.slice(0, 2).map((memory, idx) => (
+                 <div key={memory._id || idx} className="flex items-center gap-3">
+                   <Avatar
+                     src={memory.uploadedBy?.profilePicture}
+                     name={memory.uploadedBy?.fullName}
+                     size="sm"
+                   />
+                   <div className="flex-1 min-w-0">
+                     <p className="text-sm text-[#3A2E22] truncate">
+                       <span className="font-medium">{memory.uploadedBy?.fullName || 'Someone'}</span> shared a photo
+                     </p>
+                   </div>
+                   <span className="text-xs text-[#A6987F] flex-shrink-0">
+                     {getRelativeTime(memory.createdAt)}
+                   </span>
+                 </div>
+               ))}
+               {data.stories.slice(0, 1).map((story, idx) => (
+                 <div key={story._id || idx} className="flex items-center gap-3">
+                   <Avatar
+                     src={story.author?.profilePicture}
+                     name={story.author?.fullName || story.toldBy || 'Someone'}
+                     size="sm"
+                   />
+                   <div className="flex-1 min-w-0">
+                     <p className="text-sm text-[#3A2E22] truncate">
+                       <span className="font-medium">{story.author?.fullName || story.toldBy || 'Someone'}</span> told a story
+                     </p>
+                   </div>
+                   <span className="text-xs text-[#A6987F] flex-shrink-0">
+                     {getRelativeTime(story.createdAt)}
+                   </span>
+                 </div>
+               ))}
+               {data.memories.length === 0 && data.stories.length === 0 && (
+                 <p className="text-sm text-[#A6987F]">No recent activity yet.</p>
+               )}
+             </div>
+           </div>
+
+           {/* This Week's Highlight */}
+           <div className="bg-[#FFFDFA] rounded-2xl border border-[#EDE3D3] p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Star className="w-4 h-4 text-[#8B5E3C]" />
+                <h3 className="text-sm font-semibold text-[#3A2E22]">This Week&apos;s Highlight</h3>
+              </div>
+              <p className="text-sm text-[#3A2E22] mb-1">
+                {data.stats.totalMemories} new memories added, {data.stats.totalStories} stories told this week.
+              </p>
+              <p className="text-sm text-[#A6987F]">Most active: <span className="text-[#8B5E3C] font-medium">You</span></p>
+            </div>
+
+           {/* On This Day */}
+           <div className="bg-[#FFFDFA] rounded-2xl border border-[#EDE3D3] p-5">
+              <h3 className="text-sm font-semibold text-[#3A2E22] mb-4">On This Day</h3>
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {[2019, 2016, 2011, 2004, 1998].map((year) => (
+                  <div key={year} className="flex-shrink-0">
+                    <div className="w-11 h-11 rounded-lg overflow-hidden mb-1 bg-[#F5EFE6] flex items-center justify-center">
+                      <Camera className="w-5 h-5 text-[#A6987F]" />
+                    </div>
+                    <span className="text-xs text-[#A6987F] text-center block">{year}</span>
                   </div>
-                  <span className="text-[11px] font-medium text-[#3A2E22]">{data.stats.totalMemories} this month</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <FileText className="w-3 h-3 text-[#8B5E3C]" />
-                    <span className="text-[11px] text-[#3A2E22]">Stories written</span>
-                  </div>
-                  <span className="text-[11px] font-medium text-[#3A2E22]">{data.stats.totalStories} this month</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <Users className="w-3 h-3 text-[#8B5E3C]" />
-                    <span className="text-[11px] text-[#3A2E22]">Active members</span>
-                  </div>
-                  <span className="text-[11px] font-medium text-[#3A2E22]">{data.stats.activeMembers} of {data.stats.totalMembers}</span>
+                ))}
+                <div className="flex-shrink-0 w-11 h-11 rounded-lg border-2 border-dashed border-[#EDE3D3] flex items-center justify-center">
+                  <span className="text-xs text-[#A6987F]">+{Math.max(0, data.stats.totalMemories - 5)}</span>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Family Members */}
-          <div className="bg-[#FFFDFA] rounded-2xl border border-[#EDE3D3] p-4">
-            <div className="flex justify-between items-center mb-1">
-              <h3 className="text-[11px] font-semibold text-[#8B5E3C] uppercase tracking-wider">Family Members</h3>
-              <span className="text-[10px] text-[#A6987F]">{data.stats.totalMembers} members</span>
-            </div>
-            <p className="text-[10px] text-[#A6987F] mb-3">{data.stats.activeMembers} active today</p>
-            
-            {/* Member avatars row */}
-            <div className="flex items-center gap-1.5 mb-4">
-              {family?.familyMembers?.slice(0, 5).map((member, idx) => (
-                <div
-                  key={member._id || idx}
-                  className="w-7 h-7 rounded-full bg-[#8B5E3C] text-white flex items-center justify-center text-[10px] font-medium"
-                  title={member.fullName}
-                >
-                  {member.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                </div>
-              ))}
-              {family?.familyMembers && family.familyMembers.length > 5 && (
-                <div className="w-7 h-7 rounded-full bg-[#F5EFE6] text-[#8B5E3C] flex items-center justify-center text-[10px] font-medium">
-                  +{family.familyMembers.length - 5}
-                </div>
-              )}
-              {(!family?.familyMembers || family.familyMembers.length === 0) && (
-                <>
-                  <div className="w-7 h-7 rounded-full bg-[#8B5E3C] text-white flex items-center justify-center text-[10px] font-medium">LK</div>
-                  <div className="w-7 h-7 rounded-full bg-[#A67C52] text-white flex items-center justify-center text-[10px] font-medium">NM</div>
-                  <div className="w-7 h-7 rounded-full bg-[#6B8E23] text-white flex items-center justify-center text-[10px] font-medium">SP</div>
-                  <div className="w-7 h-7 rounded-full bg-[#CD853F] text-white flex items-center justify-center text-[10px] font-medium">AN</div>
-                  <div className="w-7 h-7 rounded-full bg-[#8B7355] text-white flex items-center justify-center text-[10px] font-medium">ZM</div>
-                  <div className="w-7 h-7 rounded-full bg-[#F5EFE6] text-[#8B5E3C] flex items-center justify-center text-[10px] font-medium">+5</div>
-                </>
-              )}
+              <p className="text-sm text-[#A6987F] mt-2">{data.stats.totalMemories} memories</p>
             </div>
 
-            {/* Recent activity */}
-            <div className="space-y-2.5">
-              {data.memories.slice(0, 2).map((memory, idx) => (
-                <div key={memory._id || idx} className="flex items-center gap-2">
-                  <div className="w-5 h-5 rounded-full bg-[#8B5E3C] text-white flex items-center justify-center text-[8px] font-medium flex-shrink-0">
-                    {memory.uploadedBy?.fullName?.charAt(0) || 'U'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] text-[#3A2E22] truncate">
-                      <span className="font-medium">{memory.uploadedBy?.fullName || 'Someone'}</span> shared a photo
-                    </p>
-                  </div>
-                  <span className="text-[10px] text-[#A6987F] flex-shrink-0">
-                    {getRelativeTime(memory.createdAt)}
-                  </span>
-                </div>
-              ))}
-              {data.stories.slice(0, 1).map((story, idx) => (
-                <div key={story._id || idx} className="flex items-center gap-2">
-                  <div className="w-5 h-5 rounded-full bg-[#8B5E3C] text-white flex items-center justify-center text-[8px] font-medium flex-shrink-0">
-                    {story.author?.fullName?.charAt(0) || 'U'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] text-[#3A2E22] truncate">
-                      <span className="font-medium">{story.author?.fullName || story.toldBy || 'Someone'}</span> told a story
-                    </p>
-                  </div>
-                  <span className="text-[10px] text-[#A6987F] flex-shrink-0">
-                    {getRelativeTime(story.createdAt)}
-                  </span>
-                </div>
-              ))}
-              {data.memories.length === 0 && data.stories.length === 0 && (
-                <div className="space-y-2.5">
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-full bg-[#8B5E3C] text-white flex items-center justify-center text-[8px] font-medium">L</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] text-[#3A2E22] truncate"><span className="font-medium">Lindwi</span> shared a photo</p>
-                    </div>
-                    <span className="text-[10px] text-[#A6987F]">2h ago</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-full bg-[#A67C52] text-white flex items-center justify-center text-[8px] font-medium">G</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] text-[#3A2E22] truncate"><span className="font-medium">Gogo Nomsa</span> told a story</p>
-                    </div>
-                    <span className="text-[10px] text-[#A6987F]">yesterday</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-full bg-[#6B8E23] text-white flex items-center justify-center text-[8px] font-medium">S</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] text-[#3A2E22] truncate"><span className="font-medium">Sipho</span> uploaded a video</p>
-                    </div>
-                    <span className="text-[10px] text-[#A6987F]">last week</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* This Week's Highlight */}
-          <div className="bg-[#FFFDFA] rounded-2xl border border-[#EDE3D3] p-4">
-            <div className="flex items-center gap-1.5 mb-2">
-              <Star className="w-3 h-3 text-[#8B5E3C]" />
-              <h3 className="text-xs font-semibold text-[#8B5E3C] uppercase tracking-wider">This Week&apos;s Highlight</h3>
-            </div>
-            <p className="text-xs text-[#3A2E22] mb-1">
-              {data.stats.totalMemories} new memories added, {data.stats.totalStories} stories told this week.
-            </p>
-            <p className="text-[10px] text-[#A6987F]">Most active: <span className="text-[#8B5E3C] font-medium">You</span></p>
-          </div>
-
-          {/* On This Day */}
-          <div className="bg-[#FFFDFA] rounded-2xl border border-[#EDE3D3] p-4">
-            <h3 className="text-xs font-semibold text-[#8B5E3C] uppercase tracking-wider mb-3">On This Day</h3>
-            <div className="flex gap-1.5 overflow-x-auto pb-2">
-              {[2019, 2016, 2011, 2004, 1998].map((year) => (
-                <div key={year} className="flex-shrink-0">
-                  <div className="w-11 h-11 rounded-lg overflow-hidden mb-0.5 bg-[#F5EFE6] flex items-center justify-center">
-                    <Camera className="w-5 h-5 text-[#A6987F]" />
-                  </div>
-                  <span className="text-[10px] text-[#A6987F] text-center block">{year}</span>
-                </div>
-              ))}
-              <div className="flex-shrink-0 w-11 h-11 rounded-lg border-2 border-dashed border-[#EDE3D3] flex items-center justify-center">
-                <span className="text-[10px] text-[#A6987F]">+{Math.max(0, data.stats.totalMemories - 5)}</span>
+           {/* Today's Prompt */}
+           <div className="bg-[#FFFDFA] rounded-2xl border border-[#EDE3D3] p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Star className="w-4 h-4 text-[#8B5E3C]" />
+                <h3 className="text-sm font-semibold text-[#3A2E22]">Today&apos;s Prompt</h3>
               </div>
+              <p className="text-sm text-[#3A2E22] mb-3">&quot;What&apos;s a memory from this week you want to keep forever?&quot;</p>
+              <Link href="/stories" className="text-sm text-[#8B5E3C] hover:text-[#4A3428] font-medium flex items-center gap-1 transition-colors">
+                Share a memory <ChevronRight className="w-4 h-4" />
+              </Link>
             </div>
-            <p className="text-[10px] text-[#A6987F] mt-2">{data.stats.totalMemories} memories</p>
-          </div>
-
-          {/* Today's Prompt */}
-          <div className="bg-[#FFFDFA] rounded-2xl border border-[#EDE3D3] p-4">
-            <div className="flex items-center gap-1.5 mb-2">
-              <Star className="w-3 h-3 text-[#8B5E3C]" />
-              <h3 className="text-xs font-semibold text-[#8B5E3C] uppercase tracking-wider">Today&apos;s Prompt</h3>
-            </div>
-            <p className="text-xs text-[#3A2E22] mb-2">&quot;What&apos;s a memory from this week you want to keep forever?&quot;</p>
-            <Link href="/stories" className="text-xs text-[#8B5E3C] hover:text-[#4A3428] font-medium flex items-center gap-1 transition-colors">
-              Share a memory <ChevronRight className="w-3 h-3" />
-            </Link>
-          </div>
         </div>
       </div>
 

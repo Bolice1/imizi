@@ -6,6 +6,8 @@ const router = express.Router()
 
 router.post('/', isLoggedIn, storyController.createStory)
 router.get('/', isLoggedIn, storyController.getStories)
-router.get('/:id', isLoggedIn, storyController.getStoryById)
+router.put('/:id', isLoggedIn, storyController.updateStory)
+router.delete('/:id', isLoggedIn, storyController.deleteStory)
+router.post('/:id/like', isLoggedIn, storyController.toggleStoryLike)
 
 export default router

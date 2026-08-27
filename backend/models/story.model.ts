@@ -10,6 +10,7 @@ export const storySchema = new mongoose.Schema({
         required: true
     },
     audioUrl: String,
+    thumbnailUrl: String,
     familyId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Family',

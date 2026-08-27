@@ -67,7 +67,8 @@ const getMemories = async (req: AuthRequest, res: Response, next: NextFunction):
             .sort({ createdAt: -1 })
             .skip((Number(page) - 1) * Number(limit))
             .limit(Number(limit))
-            .populate('uploadedBy', 'fullName')
+            .populate('uploadedBy', '_id fullName profilePicture')
+            .populate('comments')
 
         const total = await MemoryModel.countDocuments(filter)
 
@@ -78,22 +79,116 @@ const getMemories = async (req: AuthRequest, res: Response, next: NextFunction):
     }
 }
 
-const getMemoryById = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+const updateMemory = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    const { id } = req.params
+    const { title, description, tags, location } = req.body
+    const userId = req.user?._id
+
+    if (!mongoose.Types.ObjectId.isValid(id as string)) {
+        res.status(400).json({ success: false, message: 'Invalid memory id' })
+        return
+    }
+
     try {
-        const memory = await MemoryModel.findById(req.params.id).populate('uploadedBy', 'fullName email')
+        const memory = await MemoryModel.findById(id)
+
         if (!memory) {
             res.status(404).json({ success: false, message: 'Memory not found' })
             return
         }
-        res.status(200).json({ success: true, memory })
+
+        if (!memory.uploadedBy.equals(userId)) {
+            res.status(403).json({ success: false, message: 'Not authorized to update this memory' })
+            return
+        }
+
+        const updated = await MemoryModel.findByIdAndUpdate(
+            id,
+            { title, description, tags, location },
+            { new: true }
+        )
+
+        res.status(200).json({ success: true, memory: updated })
     } catch (error) {
         console.log((error as Error).message)
-        res.status(500).json({ success: false, message: 'Failed to fetch memory' })
+        res.status(500).json({ success: false, message: 'Failed to update memory' })
+    }
+}
+
+const deleteMemory = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    const { id } = req.params
+    const userId = req.user?._id
+
+    if (!mongoose.Types.ObjectId.isValid(id as string)) {
+        res.status(400).json({ success: false, message: 'Invalid memory id' })
+        return
+    }
+
+    try {
+        const memory = await MemoryModel.findById(id)
+
+        if (!memory) {
+            res.status(404).json({ success: false, message: 'Memory not found' })
+            return
+        }
+
+        if (!memory.uploadedBy.equals(userId)) {
+            res.status(403).json({ success: false, message: 'Not authorized to delete this memory' })
+            return
+        }
+
+        await MemoryModel.findByIdAndDelete(id)
+
+        res.status(200).json({ success: true, message: 'Memory deleted successfully' })
+    } catch (error) {
+        console.log((error as Error).message)
+        res.status(500).json({ success: false, message: 'Failed to delete memory' })
+    }
+}
+
+const toggleLike = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    const { id } = req.params
+    const userId = req.user?._id
+
+    if (!userId) {
+        res.status(401).json({ success: false, message: 'Unauthorized' })
+        return
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(id as string)) {
+        res.status(400).json({ success: false, message: 'Invalid memory id' })
+        return
+    }
+
+    try {
+        const memory = await MemoryModel.findById(id)
+
+        if (!memory) {
+            res.status(404).json({ success: false, message: 'Memory not found' })
+            return
+        }
+
+        const hasLiked = memory.likes?.some((likeId) => likeId.equals(userId as any))
+
+        if (hasLiked) {
+            await MemoryModel.findByIdAndUpdate(id, { $pull: { likes: userId } })
+        } else {
+            await MemoryModel.findByIdAndUpdate(id, { $addToSet: { likes: userId } })
+        }
+
+        const updated = await MemoryModel.findById(id).populate('uploadedBy', '_id fullName profilePicture')
+
+        res.status(200).json({ success: true, memory: updated, liked: !hasLiked })
+    } catch (error) {
+        console.log((error as Error).message)
+        res.status(500).json({ success: false, message: 'Failed to toggle like' })
     }
 }
 
 export default {
     createMemory,
     getMemories,
-    getMemoryById
+    updateMemory,
+    deleteMemory,
+    toggleLike
 }

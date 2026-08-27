@@ -5,13 +5,15 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Search, Bell, Plus, Play, BookOpen, CalendarDays, Phone, Upload, ChevronRight, LogOut, User, Copy, Check } from "lucide-react";
 import { api } from "@/lib/api";
+import Avatar from "@/components/Avatar";
+import { displayName } from "@/lib/displayName";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [user, setUser] = useState<{ fullName?: string; email?: string; role?: string } | null>(null)
+  const [user, setUser] = useState<{ _id?: string; fullName?: string; email?: string; role?: string; profilePicture?: string } | null>(null)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -32,6 +34,21 @@ export default function DashboardLayout({
     localStorage.removeItem("token")
     localStorage.removeItem("user")
     window.location.href = "/login"
+  }
+
+  const refreshUser = () => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("user")
+      if (stored) {
+        try {
+          setUser(JSON.parse(stored))
+        } catch {
+          setUser(null)
+        }
+      } else {
+        setUser(null)
+      }
+    }
   }
 
   const initials = user?.fullName
@@ -64,7 +81,7 @@ export default function DashboardLayout({
             {/* Logo */}
             <div className="flex items-center gap-8">
               <Link href="/dashboard" className="flex items-center gap-2">
-                <img src="/imizi_logo.svg" alt="Imizi" width={32} height={32} className="w-8 h-8" />
+                 <img src="/imizi_logo.svg" alt="Imizi" width={40} height={40} className="w-10 h-10" />
                 <span className="text-xl font-serif text-[#3A2E22]">imizi</span>
               </Link>
               <nav className="hidden md:flex items-center gap-6">
@@ -95,24 +112,27 @@ export default function DashboardLayout({
                 <Bell className="w-5 h-5" />
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
-              <div className="flex items-center gap-3 pl-3 border-l border-[#EDE3D3]">
-                <div className="text-right hidden sm:block">
-                  <p className="text-sm font-medium text-[#3A2E22]">{user?.fullName || "User"}</p>
-                  <p className="text-xs text-[#A6987F]">{user?.email || ""}</p>
-                </div>
-                <div className="relative">
+               <div className="flex items-center gap-3 pl-3 border-l border-[#EDE3D3]">
+                 <div className="text-right hidden sm:block">
+                   <p className="text-sm font-medium text-[#3A2E22]">{displayName(user, user?._id)}</p>
+                   <p className="text-xs text-[#A6987F]">{user?.email || ""}</p>
+                 </div>
+                 <div className="relative">
                   <button
-                    onClick={() => setDropdownOpen(!dropdownOpen)}
-                    className="w-9 h-9 rounded-full bg-[#8B5E3C] text-white flex items-center justify-center text-sm font-medium hover:ring-2 hover:ring-[#8B5E3C]/50 transition-all"
+                    onClick={() => {
+                      refreshUser()
+                      setDropdownOpen(!dropdownOpen)
+                    }}
+                    className="w-9 h-9 rounded-full hover:ring-2 hover:ring-[#8B5E3C]/50 transition-all overflow-hidden"
                   >
-                    {initials}
+                    <Avatar src={user?.profilePicture} name={user?.fullName} size="md" />
                   </button>
                   {dropdownOpen && (
                     <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-[#EDE3D3] overflow-hidden z-50">
                       <div className="py-2">
                         <div className="px-4 py-3 border-b border-[#EDE3D3]">
-                          <p className="text-sm font-medium text-[#3A2E22]">{user?.fullName || "User"}</p>
-                          <p className="text-xs text-[#A6987F]">{user?.email || ""}</p>
+                           <p className="text-sm font-medium text-[#3A2E22]">{displayName(user, user?._id)}</p>
+                           <p className="text-xs text-[#A6987F]">{user?.email || ""}</p>
                         </div>
                         <Link
                           href="/profile"

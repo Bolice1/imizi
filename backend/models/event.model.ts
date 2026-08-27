@@ -3,66 +3,27 @@ import mongoose from 'mongoose'
 export const eventSchema = new mongoose.Schema({
     title: {
         type: String,
-        required: [true, 'Title is required'],
-        trim: true,
-        maxlength: [200, 'Title cannot exceed 200 characters']
+        required: true
     },
-    description: {
-        type: String,
-        trim: true,
-        maxlength: [1000, 'Description cannot exceed 1000 characters']
-    },
+    description: String,
     type: {
         type: String,
-        enum: {
-            values: ['birthday', 'gathering', 'anniversary', 'celebration', 'appointment', 'other'],
-            message: 'Unsupported event type'
-        },
+        enum: ['birthday', 'gathering', 'anniversary', 'other'],
         default: 'other'
     },
-    startAt: {
+    date: {
         type: Date,
-        required: [true, 'Start date is required']
-    },
-    endAt: {
-        type: Date,
-        validate: {
-            validator: function (this: any, value: Date) {
-                if (!value) return true
-                return value >= this.startAt
-            },
-            message: 'End time cannot be before start time'
-        }
-    },
-    location: {
-        type: String,
-        trim: true,
-        maxlength: [200, 'Location cannot exceed 200 characters']
-    },
-    relatedMemberId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        required: true
     },
     familyId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Family',
-        required: [true, 'Family is required']
+        required: true
     },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: [true, 'Creator is required']
-    },
-    visibility: {
-        type: String,
-        enum: {
-            values: ['family', 'private'],
-            message: 'Visibility must be family or private'
-        },
-        default: 'family'
-    },
-    recurrence: {
-        type: mongoose.Schema.Types.Mixed
+        required: true
     }
 }, { timestamps: true })
 

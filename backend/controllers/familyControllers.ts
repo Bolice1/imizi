@@ -32,7 +32,9 @@ const createFamily = async (req: AuthRequest, res: Response, next: NextFunction)
 
         await UserModel.findByIdAndUpdate(userId, { familyId: family._id, role: 'admin_family' })
 
-        res.status(201).json({ success: true, message: 'Family created', family })
+        const updatedUser = await UserModel.findById(userId).select('-password')
+
+        res.status(201).json({ success: true, message: 'Family created', family, user: updatedUser })
     } catch (error) {
         console.log((error as Error).message)
         res.status(500).json({ success: false, message: 'Failed to create family' })
@@ -129,7 +131,7 @@ const joinFamily = async (req: AuthRequest, res: Response, next: NextFunction): 
 
         const user = await UserModel.findById(userId)
         if (!user) {
-            res.status(404).json({ success: false, message: 'invalid credentials' })
+            res.status(404).json({ success: false, message: 'User not found' })
             return
         }
 
@@ -144,10 +146,12 @@ const joinFamily = async (req: AuthRequest, res: Response, next: NextFunction): 
         user.role = 'user'
         await user.save()
 
+        const updatedUser = await UserModel.findById(userId).select('-password')
+
         invitation.status = 'accepted'
         await invitation.save()
 
-        res.status(200).json({ success: true, message: 'Joined family successfully', family })
+        res.status(200).json({ success: true, message: 'Joined family successfully', family, user: updatedUser })
     } catch (error) {
         console.log((error as Error).message)
         res.status(500).json({ success: false, message: 'Failed to join family' })
@@ -165,13 +169,13 @@ const getMyFamily = async (req: AuthRequest, res: Response, next: NextFunction):
     try {
         const user = await UserModel.findById(userId)
         if (!user?.familyId) {
-            res.status(200).json({ success: true, family: null })
+            res.status(200).json({ success: false, message: 'No family found' })
             return
         }
 
-        const family = await FamilyModel.findById(user.familyId).populate('familyMembers', 'fullName email')
+        const family = await FamilyModel.findById(user.familyId).populate('familyMembers', '_id fullName email profilePicture')
         if (!family) {
-            res.status(200).json({ success: true, family: null })
+            res.status(404).json({ success: false, message: 'Family not found' })
             return
         }
 
@@ -193,17 +197,18 @@ const getFamilyTree = async (req: AuthRequest, res: Response, next: NextFunction
     try {
         const user = await UserModel.findById(userId)
         if (!user?.familyId) {
-            res.status(404).json({ success: false, message: 'No family found' })
+            res.status(200).json({ success: false, message: 'No family found' })
             return
         }
 
-        const family = await FamilyModel.findById(user.familyId).populate('familyMembers', 'fullName email')
+        const family = await FamilyModel.findById(user.familyId).populate('familyMembers', '_id fullName email profilePicture generation parentId partnerId relationship status gender')
         if (!family) {
             res.status(404).json({ success: false, message: 'Family not found' })
             return
         }
 
-        const members = family.familyMembers || []
+        const members = (family.familyMembers || []).filter(Boolean)
+
         const generations: any = {
             elders: [],
             theirChildren: [],
@@ -212,33 +217,23 @@ const getFamilyTree = async (req: AuthRequest, res: Response, next: NextFunction
         }
 
         if (members.length > 0) {
-            const admin = members.find((m: any) => m._id.toString() === user.familyId?.toString())
-            generations.elders = members.filter((m: any) => {
-                const age = Math.floor(Math.random() * 30) + 60
-                return age >= 60
-            }).slice(0, 2)
-            
-            generations.theirChildren = members.filter((m: any) => {
-                const age = Math.floor(Math.random() * 20) + 40
-                return age >= 40 && age < 60
-            }).slice(0, 4)
-            
-            generations.yourGeneration = members.filter((m: any) => {
-                const age = Math.floor(Math.random() * 20) + 20
-                return age >= 20 && age < 40
-            }).slice(0, 3)
-            
-            generations.theLittleOnes = members.filter((m: any) => {
-                const age = Math.floor(Math.random() * 15) + 5
-                return age < 20
-            }).slice(0, 2)
+            const sorted = members.slice().sort((a: any, b: any) => {
+                const genA = a.generation || 3
+                const genB = b.generation || 3
+                return genA - genB
+            })
+
+            generations.elders = sorted.filter((m: any) => m.generation === 1)
+            generations.theirChildren = sorted.filter((m: any) => m.generation === 2)
+            generations.yourGeneration = sorted.filter((m: any) => !m.generation || m.generation === 3 || (m.generation && m.generation !== 1 && m.generation !== 2 && m.generation !== 4))
+            generations.theLittleOnes = sorted.filter((m: any) => m.generation === 4)
         }
 
         res.status(200).json({ 
             success: true, 
             family,
-            treeData: family.treeData || generations,
-            generations 
+            generations,
+            members
         })
     } catch (error) {
         console.log((error as Error).message)
@@ -257,7 +252,7 @@ const generateInviteLink = async (req: AuthRequest, res: Response, next: NextFun
     try {
         const user = await UserModel.findById(userId)
         if (!user?.familyId) {
-            res.status(404).json({ success: false, message: 'No family found' })
+            res.status(200).json({ success: false, message: 'No family found' })
             return
         }
 
@@ -282,6 +277,145 @@ const generateInviteLink = async (req: AuthRequest, res: Response, next: NextFun
     } catch (error) {
         console.log((error as Error).message)
         res.status(500).json({ success: false, message: 'Failed to generate invite code' })
+    }
+}
+
+const addFamilyMember = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    const userId = req.user?._id
+    const { fullName, email, relationship, generation, parentId, partnerId, status, gender } = req.body
+
+    if (!userId) {
+        res.status(401).json({ success: false, message: 'Unauthorized' })
+        return
+    }
+
+    if (!fullName || !email) {
+        res.status(400).json({ success: false, message: 'fullName and email are required' })
+        return
+    }
+
+    try {
+        const user = await UserModel.findById(userId)
+        if (!user?.familyId) {
+            res.status(400).json({ success: false, message: 'User is not in a family' })
+            return
+        }
+
+        const family = await FamilyModel.findById(user.familyId)
+        if (!family) {
+            res.status(404).json({ success: false, message: 'Family not found' })
+            return
+        }
+
+        if (!family.createdBy.equals(userId)) {
+            res.status(403).json({ success: false, message: 'Only family admin can add members' })
+            return
+        }
+
+        let newMember = await UserModel.findOne({ email })
+
+        if (!newMember) {
+            const defaultPassword = crypto.randomBytes(16).toString('hex')
+            newMember = await UserModel.create({
+                fullName,
+                email,
+                password: defaultPassword,
+                familyId: family._id,
+                role: 'user',
+                generation: generation || 3,
+                parentId: parentId || undefined,
+                partnerId: partnerId || undefined,
+                status: status || 'living',
+                gender: gender || undefined,
+            })
+        } else {
+            newMember.familyId = family._id
+            newMember.role = 'user'
+            if (generation) newMember.generation = generation
+            if (parentId) newMember.parentId = parentId
+            if (partnerId) newMember.partnerId = partnerId
+            if (status) newMember.status = status
+            if (gender) newMember.gender = gender
+            await newMember.save()
+        }
+
+        const members = family.familyMembers || []
+        if (!members.includes(newMember._id)) {
+            family.familyMembers = [...members, newMember._id]
+            await family.save()
+        }
+
+        const updatedMember = await UserModel.findById(newMember._id).select('-password')
+
+        res.status(201).json({ success: true, member: updatedMember })
+    } catch (error) {
+        console.log((error as Error).message)
+        res.status(500).json({ success: false, message: 'Failed to add family member' })
+    }
+}
+
+const updateFamilyMember = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    const userId = req.user?._id
+    const { id } = req.params
+    const { fullName, email, relationship, generation, parentId, partnerId, status, gender } = req.body
+
+    if (!userId) {
+        res.status(401).json({ success: false, message: 'Unauthorized' })
+        return
+    }
+
+    if (!id) {
+        res.status(400).json({ success: false, message: 'Member id is required' })
+        return
+    }
+
+    try {
+        const user = await UserModel.findById(userId)
+        if (!user?.familyId) {
+            res.status(400).json({ success: false, message: 'User is not in a family' })
+            return
+        }
+
+        const family = await FamilyModel.findById(user.familyId)
+        if (!family) {
+            res.status(404).json({ success: false, message: 'Family not found' })
+            return
+        }
+
+        const member = await UserModel.findById(id)
+        if (!member) {
+            res.status(404).json({ success: false, message: 'Family member not found' })
+            return
+        }
+
+        const members = family.familyMembers || []
+        if (!members.includes(member._id)) {
+            res.status(403).json({ success: false, message: 'Not allowed to edit this member' })
+            return
+        }
+
+        if (!family.createdBy.equals(userId)) {
+            res.status(403).json({ success: false, message: 'Only family admin can edit members' })
+            return
+        }
+
+        if (fullName !== undefined) member.fullName = fullName
+        if (email !== undefined) member.email = email
+        if (relationship !== undefined) member.relationship = relationship
+        if (generation !== undefined) member.generation = generation
+        if (status !== undefined) member.status = status
+        if ('parentId' in req.body) member.parentId = parentId || undefined
+        if ('partnerId' in req.body) member.partnerId = partnerId || undefined
+        if (gender !== undefined && gender !== "") member.gender = gender
+
+        await member.save()
+
+        const updatedMember = await UserModel.findById(member._id).select('-password')
+
+        res.status(200).json({ success: true, member: updatedMember })
+    } catch (error) {
+        console.log((error as Error).message)
+        res.status(500).json({ success: false, message: 'Failed to update family member' })
     }
 }
 
@@ -326,5 +460,7 @@ export default {
     getMyFamily,
     getInvite,
     generateInviteLink,
-    getFamilyTree
+    getFamilyTree,
+    addFamilyMember,
+    updateFamilyMember
 }

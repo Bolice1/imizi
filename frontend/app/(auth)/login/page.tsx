@@ -55,8 +55,8 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-gradient-to-br from-black/50 via-black/30 to-[#4A3428]/40" />
         <div className="relative z-10 flex flex-col justify-end p-12 text-white">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/20">
-                  <img src="/imizi_logo.svg" alt="Imizi" width={24} height={24} className="w-6 h-6" />
+                <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/20">
+                  <img src="/imizi_logo.svg" alt="Imizi" width={32} height={32} className="w-8 h-8" />
                 </div>
                 <span className="text-xl font-serif tracking-wide">Imizi</span>
               </div>
@@ -70,8 +70,8 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           <div className="bg-[#FFFDFA] rounded-3xl shadow-xl shadow-black/5 border border-[#EDE3D3] p-10">
             <div className="lg:hidden flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 rounded-full bg-[#4A3428] flex items-center justify-center">
-                <img src="/imizi_logo.svg" alt="Imizi" width={24} height={24} className="w-6 h-6" />
+              <div className="w-12 h-12 rounded-full bg-[#4A3428] flex items-center justify-center">
+                <img src="/imizi_logo.svg" alt="Imizi" width={32} height={32} className="w-8 h-8" />
               </div>
               <span className="text-xl font-serif text-[#3A2E22]">Imizi</span>
             </div>

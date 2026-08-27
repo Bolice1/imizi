@@ -4,7 +4,6 @@ import { MemoryModel } from '../models/memory.model.js'
 import { StoryModel } from '../models/story.model.js'
 import { EventModel } from '../models/event.model.js'
 import { CommentModel } from '../models/comment.model.js'
-import { FamilyModel } from '../models/family.model.js'
 
 interface AuthRequest extends Request {
     user?: {
@@ -35,10 +34,10 @@ const getDashboardData = async (req: AuthRequest, res: Response, next: NextFunct
         const familyId = typeof req.user.familyId === 'string' ? new mongoose.Types.ObjectId(req.user.familyId) : req.user.familyId
 
         const [upcomingEvents, memories, stories, comments] = await Promise.all([
-            EventModel.find({ familyId }).sort({ startAt: 1 }).limit(3),
-            MemoryModel.find({ familyId }).sort({ createdAt: -1 }).limit(10).populate('uploadedBy', 'fullName'),
-            StoryModel.find({ familyId }).sort({ createdAt: -1 }).limit(5).populate('author', 'fullName'),
-            CommentModel.find({ familyId }).sort({ createdAt: -1 }).limit(5).populate('author', 'fullName')
+            EventModel.find({ familyId }).sort({ date: 1 }).limit(3),
+            MemoryModel.find({ familyId }).sort({ createdAt: -1 }).limit(10).populate('uploadedBy', '_id fullName profilePicture'),
+            StoryModel.find({ familyId }).sort({ createdAt: -1 }).limit(5).populate('author', '_id fullName profilePicture'),
+            CommentModel.find({ familyId }).sort({ createdAt: -1 }).limit(5).populate('author', '_id fullName profilePicture')
         ])
 
         const totalMemories = await MemoryModel.countDocuments({ familyId })
@@ -48,11 +47,12 @@ const getDashboardData = async (req: AuthRequest, res: Response, next: NextFunct
             ...(await StoryModel.find({ familyId }).distinct('author'))
         ]).size
 
-        const family = await FamilyModel.findById(familyId).select('familyMembers')
+        const family = await mongoose.model('Family').findById(familyId).populate('familyMembers', '_id fullName email profilePicture')
 
         res.status(200).json({
             success: true,
             hasFamily: true,
+            family,
             data: {
                 upcomingEvents,
                 memories,
